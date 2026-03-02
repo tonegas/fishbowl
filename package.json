@@ -1,0 +1,8 @@
+{
+  "name": "fishbowl",
+  "description": "A competitive multiplayer fish battle game",
+  "dependencies": {
+    "socket.io": "^4.8.3",
+    "sqlite3": "^5.1.7"
+  }
+}

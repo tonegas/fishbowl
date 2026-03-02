@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    <style>
+        #nameOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; }
+        #nameOverlay input { font-size:24px; padding:15px 25px; background:rgba(255,255,255,0.2); border:2px solid rgba(255,255,255,0.5); color:#fff; border-radius:8px; min-width:250px; }
+        #nameOverlay input::placeholder { color:rgba(255,255,255,0.6); }
+        #nameOverlay input:focus { outline:none; border-color:rgba(255,255,255,0.9); }
+        #nameError { color:#ff6b6b; font-size:18px; margin-top:15px; font-family:Arial,sans-serif; }
+        #leaderboardOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:1001; }
+        #leaderboardOverlay h2 { color:#fff; font:bold 24px Arial,sans-serif; margin-bottom:20px; }
+        #leaderboardList { color:#fff; font:bold 24px Arial,sans-serif; list-style:none; padding:0; margin:0 0 25px 0; max-height:60vh; overflow-y:auto; width:320px; }
+        #leaderboardList li { padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.2); display:table; width:100%; box-sizing:border-box; table-layout:fixed; }
+        #leaderboardList li .rank { display:table-cell; width:28px; vertical-align:middle; }
+        #leaderboardList li .name { display:table-cell; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }
+        #leaderboardList li .weight { display:table-cell; width:85px; text-align:right; vertical-align:middle; white-space:nowrap; }
+        #playAgainBtn { font-size:20px; padding:12px 30px; background:rgba(100,200,100,0.8); border:none; color:#fff; border-radius:8px; cursor:pointer; }
+        #playAgainBtn:hover { background:rgba(100,200,100,1); }
+    </style>
+    <script type="text/javascript" src="/socket.io/socket.io.js"></script>
+    <script type="text/javascript" src="media/lib/jquery-2.1.0.min.js"></script>
+    <script type="text/javascript" src="media/lib/createjs-2013.12.12.min.js"></script>
+    <script type="text/javascript" src="media/lib/lodash-2.4.1.min.js"></script>
+    <script type="text/javascript" src="media/lib/kibo.js"></script>
+    <script type="text/javascript" src="media/js/food.js"></script>
+	<script type="text/javascript" src="media/js/fish.js"></script>
+	<script type="text/javascript" src="media/js/lake.js"></script>
+    </head>
+    <body style="margin:0;padding:0;overflow:hidden;">
+	<canvas id="Lake" width="800" height="800" style="display:block;"></canvas>
+	<div id="nameOverlay">
+		<input type="text" id="playerNameInput" placeholder="Fish Name" maxlength="12" autocomplete="off" />
+		<div id="nameError"></div>
+	</div>
+	<div id="leaderboardOverlay">
+		<h2>Leaderboard</h2>
+		<ul id="leaderboardList"></ul>
+		<button id="playAgainBtn">Play Again</button>
+	</div>
+    </body>
+</html>
+
+
