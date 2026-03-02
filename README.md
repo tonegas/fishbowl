@@ -68,4 +68,3 @@ fishbowl/
 ## Notes
 
 - The `fish_leaderboard.db` database is created automatically in the project folder
-- For production deployment, consider using nginx as a reverse proxy (see `bellonodjs.wall2me.com.conf` in the original folder)
