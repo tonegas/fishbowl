@@ -27,7 +27,7 @@ The server listens on port **9999** (or the port passed as an argument).
 1. Open in your browser: **http://localhost:9999/www/fish.html**
 2. Enter a name for your fish (max 12 characters)
 3. Use the **arrow keys** to move around the lake
-4. Eat objects (SpaceRock) and smaller fish to grow
+4. Eat algae and smaller fish to grow
 5. Avoid bigger fish: they can eat you
 6. Your life decreases over time: eat to survive
 7. When you die, check the **leaderboard** and play again
