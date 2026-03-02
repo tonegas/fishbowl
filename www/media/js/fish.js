@@ -161,10 +161,21 @@ function Fish(id,pos,ctp,color_str,name){
 	fP.pupilR = pupilR;
 	fP.cont[0].addChild(pupilR);
 
+	this.nameLabel = new createjs.Text(this.name || "Fish", "8px Arial", "#ffffff");
+	this.nameLabel.alpha = 0.75;
+	this.nameLabel.textAlign = "center";
+	this.nameLabel.visible = false;
+	stage.addChild(this.nameLabel);
+
 	this.arrow = new createjs.Shape();
 	this.arrow.graphics.beginFill(createjs.Graphics.getHSL(this.color, 50, 60)).lineTo(-5,12.5).bezierCurveTo(-5,12,0,8,5,12.2).lineTo(0,0).endFill();
 	this.arrow.visible = false;
 	stage.addChild(this.arrow);
+	this.arrowLabel = new createjs.Text("", "8px Arial", "#ffffff");
+	this.arrowLabel.visible = false;
+	this.arrowLabel.textAlign = "center";
+	this.arrowLabel.alpha = 0.9;
+	stage.addChild(this.arrowLabel);
 	
 	this.info = new createjs.Text("", "bold 24px Arial", "#000000");
 	this.info.textAlign = "right";
@@ -394,7 +405,8 @@ function Fish(id,pos,ctp,color_str,name){
 		}
 	}
 
-	function set(ctp,pos,size,color_str,lake){
+	function set(ctp,pos,size,color_str,lake,name){
+		if(name !== undefined) this.name = name || "Fish";
 		this.drawFish(ctp,color_str);
 		if(myFish && !(this===myFish)){
 			if(ctp.length>0){
@@ -428,13 +440,27 @@ function Fish(id,pos,ctp,color_str,name){
 				}
 				if(Math.abs(p.x) < bordo.x && Math.abs(p.y)<bordo.y){
 					this.arrow.visible = false;
+					this.arrowLabel.visible = false;
+					this.nameLabel.visible = true;
+					this.nameLabel.text = this.name || "Fish";
+					this.nameLabel.color = color_str;
+					var headPt = fP.cont[0].localToLocal(50, 50, stage);
+					this.nameLabel.x = headPt.x;
+					this.nameLabel.y = headPt.y;
 				}else{
 					this.arrow.visible = true;
+					this.arrowLabel.visible = true;
+					this.nameLabel.visible = false;
+					this.arrowLabel.text = this.name || "Fish";
+					this.arrowLabel.color = color_str;
 					this.arrow.graphics.clear();
 					this.arrow.graphics.beginFill(color_str).lineTo(-5,12.5).bezierCurveTo(-5,12,0,8,5,12.2).lineTo(0,0).endFill();
 					this.arrow.scaleX = 1.5;
 					this.arrow.scaleY = 1.5;
 					this.arrow.rotation = ang/Math.PI*180;
+					var offset = 22;
+					this.arrowLabel.x = this.arrow.x + offset * Math.sin(ang);
+					this.arrowLabel.y = this.arrow.y - offset * Math.cos(ang);
 				}
 			}else{
 				this.die();
@@ -454,6 +480,8 @@ function Fish(id,pos,ctp,color_str,name){
 
 	function die(){
 		stage.removeChild(this.arrow);
+		stage.removeChild(this.arrowLabel);
+		stage.removeChild(this.nameLabel);
 		stage.removeChild(this.info);
 		lake_stage.removeChild(this.fishParts.cont[0]);
 		this.alive=false;

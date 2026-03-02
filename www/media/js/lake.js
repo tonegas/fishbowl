@@ -118,7 +118,7 @@ function imageIsLoaded(event){
 		if(myFish && myFish.id!=data["id"]){
 			var ok = 0;
 			if(lake.otherFish[data['id']]){
-				lake.otherFish[data['id']].set(data["ctp"],data["pos"],data["size"],data["color"],lake);
+				lake.otherFish[data['id']].set(data["ctp"],data["pos"],data["size"],data["color"],lake,data["name"]);
 				lake.otherFish[data['id']].setAlive(1);
 				ok=1;
 			}
