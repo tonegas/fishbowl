@@ -295,7 +295,7 @@ function Fish(id,pos,ctp,color_str,name){
 				}else{
 					this.sp=-6;
 				}
-				this.fps=0;
+				this.fsp=0;
 				this.ssp=0;
 			}
 
@@ -327,6 +327,9 @@ function Fish(id,pos,ctp,color_str,name){
 			this.velt = this.acct*dt + this.velt;
 			if(this.velt>600/this.lake_size){
 				this.velt=600/this.lake_size;
+			}
+			if(this.velt<0){
+				this.velt=0;
 			}
 			this.pos.x=Math.sin(this.ctp[0])*this.velt*dt+this.pos.x;
 			this.pos.y=-Math.cos(this.ctp[0])*this.velt*dt+this.pos.y;

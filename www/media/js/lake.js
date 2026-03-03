@@ -201,7 +201,7 @@ function imageIsLoaded(event){
 	var count = 0;
 	var dtTot = 0;
 	function tick(event){
-		dt=(event.time-timep)/1000;
+		dt = (timep !== undefined) ? (event.time-timep)/1000 : 0;
 		if(count==50){
 			count=1;
 			dtTot=0;
@@ -289,6 +289,19 @@ function imageIsLoaded(event){
 	}).up('right', function() {
 		if(myFish) myFish.right=false; return false;
 	});
+
+	function resetKeys() {
+		if (myFish) {
+			myFish.left = false;
+			myFish.right = false;
+			myFish.up = false;
+			myFish.down = false;
+		}
+	}
+	window.addEventListener('blur', resetKeys, false);
+	document.addEventListener('visibilitychange', function() {
+		if (document.hidden) resetKeys();
+	}, false);
 	
 	window.addEventListener('resize', resize, false);
 	function resize() { 
