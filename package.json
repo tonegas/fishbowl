@@ -1,6 +1,10 @@
 {
   "name": "fishbowl",
   "description": "A competitive multiplayer fish battle game",
+  "scripts": {
+    "start": "node fish_server.js 9999",
+    "start:cheat": "node fish_server.js 9999 --cheat"
+  },
   "dependencies": {
     "socket.io": "^4.8.3",
     "sqlite3": "^5.1.7"

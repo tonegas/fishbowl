@@ -1,7 +1,7 @@
 "use strict";
 
 (function (window) {
-	var cfg = window.FishbowlConfig || { MOUTH_SIZE_FACTOR: 5, CHASE_DISTANCE_FACTOR: 5, FOOD_SPAWN_HALF: 400, LAKE_SIZE: 10000, FISH_INITIAL_LIFE: 180, FISH_END_LIFE: 1200, LAKE_START_SIZE: 10, FISH_START_SIZE: 0.04 };
+	var cfg = window.FishbowlConfig || { MOUTH_SIZE_FACTOR: 5, CHASE_DISTANCE_FACTOR: 5, FOOD_SPAWN_HALF: 400, LAKE_SIZE: 10000, FISH_INITIAL_LIFE: 180, FISH_END_LIFE: 1200, LAKE_START_SIZE: 10, FISH_START_SIZE: 0.04, WHOLE_FISH_SIZE_RATIO: 3 };
 	var state = window.Fishbowl;
 
 	function Fish(id, pos, ctp, colorStr, name) {
@@ -197,17 +197,52 @@
 		var dis = Math.sqrt(Math.pow(predator.mounth.x - prey.fin.x, 2) + Math.pow(predator.mounth.y - prey.fin.y, 2));
 		var intersect = dis < mouthRadius + segmentRadius;
 		if (intersect) {
-			if (prey.fishParts.nRPart > 2) {
-				prey.fishParts.nRPart -= 1;
-				prey.lastfin.visible = false;
+			var sizeRatio = predator.size / prey.size;
+			var wholeFishRatio = cfg.WHOLE_FISH_SIZE_RATIO || 3;
+
+			if (sizeRatio >= wholeFishRatio && predator.size > prey.size) {
+				var totalParts = prey.fishParts.nRPart > 2 ? (prey.fishParts.nRPart - 2 + 1) : 1;
 				if (prey === this) {
-					this.life -= 15;
-					this.ctp = this.ctp.splice(0, prey.fishParts.nRPart);
+					this.alive = false;
 				} else {
-					this.life += (prey.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FISH;
-					if (this.life >= this.max_life) {
-						this.over += (this.life - this.max_life) / 2;
-						this.life = this.max_life;
+					for (var p = 0; p < totalParts; p++) {
+						this.life += (prey.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FISH;
+						if (this.life >= this.max_life) {
+							this.over += (this.life - this.max_life) / 2;
+							this.life = this.max_life;
+						}
+					}
+					prey.die();
+				}
+			} else if (prey.fishParts.nRPart > 2) {
+				var segmentsToEat = Math.max(1, Math.min(Math.floor(sizeRatio), prey.fishParts.nRPart - 2));
+
+				for (var s = 0; s < segmentsToEat; s++) {
+					prey.lastfin.visible = false;
+					prey.fishParts.nRPart -= 1;
+					prey.lastfin = prey.fishParts.cont[prey.fishParts.nRPart - 1];
+					if (prey === this) {
+						this.life -= 15;
+						this.ctp = this.ctp.splice(0, prey.fishParts.nRPart);
+					} else {
+						this.life += (prey.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FISH;
+						if (this.life >= this.max_life) {
+							this.over += (this.life - this.max_life) / 2;
+							this.life = this.max_life;
+						}
+					}
+				}
+
+				if (prey.fishParts.nRPart <= 2 && predator.size > prey.size) {
+					if (prey === this) {
+						this.alive = false;
+					} else {
+						this.life += (prey.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FISH;
+						if (this.life >= this.max_life) {
+							this.over += (this.life - this.max_life) / 2;
+							this.life = this.max_life;
+						}
+						prey.die();
 					}
 				}
 			} else {
@@ -220,6 +255,7 @@
 							this.over += (this.life - this.max_life) / 2;
 							this.life = this.max_life;
 						}
+						prey.die();
 					}
 				}
 			}

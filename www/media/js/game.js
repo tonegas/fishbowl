@@ -53,6 +53,7 @@
 	}
 
 	function onNewFish(data) {
+		state.cheatEnabled = data.cheatEnabled === true;
 		state.stage.removeAllChildren();
 		state.lakeStage.removeAllChildren();
 		state.stage.addChild(state.lakeStage);
@@ -138,8 +139,9 @@
 			var toRemove = [];
 			for (var i = 0; i < lake.otherFishId.length; i++) {
 				var other = lake.otherFish[lake.otherFishId[i]];
+				if (!other) continue;
 				fish.bite(fish, other);
-				fish.bite(other, fish);
+				if (other.alive) fish.bite(other, fish);
 				if (other.setAlive(-dt) === false) {
 					toRemove.push(lake.otherFishId[i]);
 				}
@@ -191,9 +193,8 @@
 		key.down("right", function() { onMoveKey(); if (state.myFish) state.myFish.right = true; return false; });
 		key.up("right", function() { if (state.myFish) state.myFish.right = false; return false; });
 		key.down("q", function() {
-			if (state.myFish) {
+			if (state.cheatEnabled && state.myFish) {
 				state.myFish.life = Math.min(state.myFish.life + 30, state.myFish.max_life);
-
 				state.myFish.size_time += 10;
 				state.myFish.size_time = Math.min(state.myFish.size_time, cfg.FISH_END_LIFE);
 			}

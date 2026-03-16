@@ -22,6 +22,18 @@ node fish_server.js 9999
 
 The server listens on port **9999** (or the port passed as argument). Config is loaded from `www/media/js/config.js`.
 
+### Cheat mode (crescere con tasto Q)
+
+Per abilitare il cheat che permette di far crescere il pesce premendo **Q** (vita +30, dimensione +10):
+
+```bash
+node fish_server.js 9999 --cheat
+# oppure
+npm run start:cheat
+```
+
+Il cheat è **disabilitato di default** (`false`).
+
 ## Server deployment (PM2)
 
 For production, use [PM2](https://pm2.keymetrics.io/) to keep the process running:

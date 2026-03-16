@@ -53,7 +53,8 @@ function setupSockets(io, config) {
 			socket.emit("new_fish_id", {
 				id: nextFishId,
 				pos: pos,
-				fobj: lakeWorld
+				fobj: lakeWorld,
+				cheatEnabled: config.cheatEnabled === true
 			});
 			nextFishId += 1;
 		});
