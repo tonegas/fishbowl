@@ -44,7 +44,7 @@
 		this.myy = this.y;
 		this.active = true;
 	};
-	Food.prototype.update = function(event, x, y) {
+	Food.prototype.update = function(event, playerX, playerY) {
 		this.rotation += this.spin;
 		this.vX = Math.sin(this.rotation / 7) / 5 + this.vCX;
 		this.vY = Math.cos(this.rotation / 7) / 5 + this.vCY;
@@ -53,8 +53,17 @@
 		this.vCX /= 1.01;
 		this.vCY /= 1.01;
 		var cfg = window.FishbowlConfig || {};
-		var halfLake = (cfg.LAKE_SIZE || 1000) / 2;
+		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
+		var foodSpawnRadius = cfg.FOOD_SPAWN_RADIUS || cfg.FOOD_SPAWN_HALF || 1000;
 		var margin = (this.bounds || this.size || 1);
+		var dx = this.myx - playerX;
+		var dy = this.myy - playerY;
+		var dist = Math.sqrt(dx * dx + dy * dy);
+		if (dist > foodSpawnRadius) {
+			var angle = Math.random() * Math.PI * 2;
+			this.myx = playerX + Math.cos(angle) * (Math.random() * 0.5 + 0.5) * foodSpawnRadius;
+			this.myy = playerY + Math.sin(angle) * (Math.random() * 0.5 + 0.5) * foodSpawnRadius;
+		}
 		this.myx = Math.max(-halfLake + margin, Math.min(halfLake - margin, this.myx));
 		this.myy = Math.max(-halfLake + margin, Math.min(halfLake - margin, this.myy));
 		this.x = this.myx;

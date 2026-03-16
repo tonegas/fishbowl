@@ -34,6 +34,7 @@
 			LAKE_SIZE: cfg.lakeSize,
 			FOOD_COUNT: cfg.foodCount,
 			FOOD_SPAWN_HALF: cfg.foodSpawnRadius,
+			FOOD_SPAWN_RADIUS: cfg.foodSpawnRadius,
 			MOUTH_SIZE_FACTOR: cfg.mouthSizeFactor,
 			CHASE_DISTANCE_FACTOR: cfg.chaseDistanceFactor,
 			FISH_INITIAL_LIFE: cfg.fishInitialLife,

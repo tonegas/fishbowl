@@ -253,10 +253,12 @@
 					this.life = this.max_life;
 				}
 				var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
-				var foodMargin = 1;
+				var foodSpawnRadius = cfg.FOOD_SPAWN_RADIUS || cfg.FOOD_SPAWN_HALF || 1000;
 				var newSize = Math.random() * 0.5 + 0.02;
-				var lx = -halfLake + foodMargin + Math.random() * Math.max(0, 2 * halfLake - 2 * foodMargin);
-				var ly = -halfLake + foodMargin + Math.random() * Math.max(0, 2 * halfLake - 2 * foodMargin);
+				var lx = lake.x + (Math.random() * 2 - 1) * foodSpawnRadius;
+				var ly = lake.y + (Math.random() * 2 - 1) * foodSpawnRadius;
+				lx = Math.max(-halfLake + 1, Math.min(halfLake - 1, lx));
+				ly = Math.max(-halfLake + 1, Math.min(halfLake - 1, ly));
 				obj.activate(newSize, lx, ly);
 			}
 			var chaseDist = mouthRadius + foodRadius * (cfg.CHASE_DISTANCE_FACTOR || 5);

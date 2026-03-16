@@ -75,12 +75,16 @@
 		var color = createjs.Graphics.getHSL(Math.ceil(Math.random() * 360), 100, 50);
 		state.myFish = new Fish(data.id, pos, [0, 0, 0, 0, 0], color, state.playerName);
 
-		var halfLake = (cfg.LAKE_SIZE || 1000) / 2;
-		var foodMargin = 1;
+		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
+		var foodSpawnRadius = cfg.FOOD_SPAWN_RADIUS || cfg.FOOD_SPAWN_HALF || 1000;
+		var cx = state.lake.x;
+		var cy = state.lake.y;
 		for (var j = 0; j < state.lake.mObjectN; j++) {
 			var size = Math.random() * 0.5 + 0.04;
-			var lx = -halfLake + foodMargin + Math.random() * Math.max(0, 2 * halfLake - 2 * foodMargin);
-			var ly = -halfLake + foodMargin + Math.random() * Math.max(0, 2 * halfLake - 2 * foodMargin);
+			var lx = cx + (Math.random() * 2 - 1) * foodSpawnRadius;
+			var ly = cy + (Math.random() * 2 - 1) * foodSpawnRadius;
+			lx = Math.max(-halfLake + 1, Math.min(halfLake - 1, lx));
+			ly = Math.max(-halfLake + 1, Math.min(halfLake - 1, ly));
 			state.lake.mObject[j] = new Food(size, lx, ly);
 			state.lakeStage.addChildAt(state.lake.mObject[j], 0);
 		}
@@ -122,7 +126,7 @@
 			}
 
 			_.each(lake.mObject, function(obj) {
-				if (obj.size < fish.size) {
+				if (obj.size < fish.size / 2.0) {
 					state.lakeStage.removeChild(obj);
 					lake.mObject = _.without(lake.mObject, _.findWhere(lake.mObject, obj));
 				} else {
