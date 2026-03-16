@@ -16,7 +16,7 @@
 		fishLifeGainFromFish: 40,
 		fishStartSize: 0.04,
 		fishEndSize: 2.0,
-		algaeCount: 200,
+		algaeCount: 150,
 		playerSpawnRange: 9000,
 		waterSurfaceLineSpacing: 100,
 		waterSurfaceLineCount: 10,

@@ -9,6 +9,27 @@
 	var key = new Kibo();
 	var timePrev;
 
+	function drawInitialBackground() {
+		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
+		var ls = cfg.LAKE_START_SIZE || 10;
+		var lake = { x: 0, y: 0 };
+		var lakeLeft = (-halfLake - lake.x) * ls;
+		var lakeRight = (halfLake - lake.x) * ls;
+		var lakeTop = (-halfLake - lake.y) * ls;
+		var lakeBottom = (halfLake - lake.y) * ls;
+		var sx = state.stage.x;
+		var sy = state.stage.y;
+		state.bg.graphics.clear();
+		state.bg.graphics.beginFill("#888899").drawRect(-sx, -sy, state.stage.canvas.width, state.stage.canvas.height).endFill();
+		var drawL = Math.max(lakeLeft, -sx);
+		var drawR = Math.min(lakeRight, sx);
+		var drawT = Math.max(lakeTop, -sy);
+		var drawB = Math.min(lakeBottom, sy);
+		if (drawL < drawR && drawT < drawB) {
+			state.bg.graphics.beginLinearGradientFill(["#77F", "#113"], [0, 1], drawL, lakeTop, drawL, lakeBottom).drawRect(drawL, drawT, drawR - drawL, drawB - drawT).endFill();
+		}
+	}
+
 	function init(socket, loader) {
 		state.loader = loader;
 		if (!createjs.Ticker.hasEventListener("tick")) {
@@ -18,8 +39,10 @@
 		state.stage.enableDOMEvents(true);
 		state.lakeStage = new createjs.Container();
 		state.bg = new createjs.Shape();
-		ui.initNameOverlay(socket);
 		resize();
+		drawInitialBackground();
+		state.stage.addChild(state.bg);
+		ui.initNameOverlay(socket);
 		state.stage.update();
 		setupKeyboard();
 		window.addEventListener("resize", resize, false);
@@ -65,6 +88,7 @@
 		state.lakeStage.addChild(state.lakeBorder.shape);
 		state.lakeStage.addChildAt(state.lakeBorder.innerLineShape, 0);
 		state.stage.addChildAt(state.bg, 0);
+		ui.showTutorial();
 	}
 
 	function tick(event) {
@@ -73,6 +97,9 @@
 		timePrev = event.time;
 
 		if (!state.myFish || dt >= 0.1) {
+			if (!state.myFish && state.bg) {
+				drawInitialBackground();
+			}
 			state.stage.update(event);
 			return;
 		}
@@ -146,13 +173,18 @@
 	}
 
 	function setupKeyboard() {
-		key.down("up", function() { if (state.myFish) state.myFish.up = true; return false; });
+		function onMoveKey() {
+			if (document.getElementById("tutorialOverlay").classList.contains("visible")) {
+				ui.hideTutorial();
+			}
+		}
+		key.down("up", function() { onMoveKey(); if (state.myFish) state.myFish.up = true; return false; });
 		key.up("up", function() { if (state.myFish) state.myFish.up = false; return false; });
-		key.down("down", function() { if (state.myFish) state.myFish.down = true; return false; });
+		key.down("down", function() { onMoveKey(); if (state.myFish) state.myFish.down = true; return false; });
 		key.up("down", function() { if (state.myFish) state.myFish.down = false; return false; });
-		key.down("left", function() { if (state.myFish) state.myFish.left = true; return false; });
+		key.down("left", function() { onMoveKey(); if (state.myFish) state.myFish.left = true; return false; });
 		key.up("left", function() { if (state.myFish) state.myFish.left = false; return false; });
-		key.down("right", function() { if (state.myFish) state.myFish.right = true; return false; });
+		key.down("right", function() { onMoveKey(); if (state.myFish) state.myFish.right = true; return false; });
 		key.up("right", function() { if (state.myFish) state.myFish.right = false; return false; });
 		key.down("q", function() {
 			if (state.myFish) {

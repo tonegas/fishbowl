@@ -79,6 +79,23 @@
 		document.getElementById("leaderboardOverlay").style.display = "none";
 	}
 
+	function showTutorial() {
+		var el = document.getElementById("tutorialOverlay");
+		el.style.transition = "none";
+		el.style.display = "flex";
+		el.style.opacity = "1";
+		el.classList.add("visible");
+		el.offsetHeight;
+		el.style.transition = "";
+		el.style.opacity = "";
+	}
+
+	function hideTutorial() {
+		var el = document.getElementById("tutorialOverlay");
+		el.classList.remove("visible");
+		setTimeout(function() { el.style.display = "none"; }, 1200);
+	}
+
 	function initNameOverlay(socket) {
 		var nameInput = document.getElementById("playerNameInput");
 		var nameError = document.getElementById("nameError");
@@ -107,6 +124,8 @@
 		showLeaderboardLoading: showLeaderboardLoading,
 		hideLeaderboard: hideLeaderboard,
 		initNameOverlay: initNameOverlay,
+		showTutorial: showTutorial,
+		hideTutorial: hideTutorial,
 		formatWeight: formatWeight
 	};
 }(window));

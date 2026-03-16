@@ -20,12 +20,14 @@
 			w.omega = Math.sqrt(9.81 * w.k) * 0.35;
 		}
 		this.lineSpacing = cfg.WATER_LINE_SPACING;
-		var totalLines = Math.max(1, cfg.WATER_LINE_COUNT);
+		this.baseLineCount = Math.max(1, cfg.WATER_LINE_COUNT);
+		var maxLines = Math.max(100, this.baseLineCount * 25);
+		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
 		this.offsets = [];
-		for (var i = 0; i < totalLines; i++) {
+		for (var i = 0; i < maxLines; i++) {
 			this.offsets.push({
-				dx: (Math.random() * 2 - 1) * this.lineSpacing,
-				dy: (Math.random() * 2 - 1) * this.lineSpacing
+				dx: (Math.random() * 2 - 1) * halfLake,
+				dy: (Math.random() * 2 - 1) * halfLake
 			});
 		}
 	}
@@ -44,18 +46,22 @@
 		var g = this.shape.graphics;
 		g.clear();
 
+		var lakeStartSize = cfg.LAKE_START_SIZE || 10;
+		var scaleFactor = Math.max(1, lakeStartSize / lakeSize);
+		var lineCount = Math.min(this.offsets.length, Math.max(this.baseLineCount, Math.round(this.baseLineCount * scaleFactor)));
+
 		var halfW = cfg.WATER_LINE_LENGTH_X / 2;
 		var halfH = 5;
 		var step = 5;
 		var cx = lake.x;
 		var cy = lake.y;
-		var halfLake = lakeSize / 2;
+		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
 		var cw = (window.Fishbowl.stage && window.Fishbowl.stage.canvas) ? window.Fishbowl.stage.canvas.width : 800;
 		var ch = (window.Fishbowl.stage && window.Fishbowl.stage.canvas) ? window.Fishbowl.stage.canvas.height : 800;
 		var visibleExtentX = (cw / lakeSize) / 2;
 		var visibleExtentY = (ch / lakeSize) / 2;
 
-		for (var i = 0; i < this.offsets.length; i++) {
+		for (var i = 0; i < lineCount; i++) {
 			var o = this.offsets[i];
 			var baseX = o.dx;
 			var baseY = o.dy;

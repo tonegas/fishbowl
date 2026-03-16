@@ -1,12 +1,15 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
     <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        #nameOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; }
-        #nameOverlay input { font-size:24px; padding:15px 25px; background:rgba(255,255,255,0.2); border:2px solid rgba(255,255,255,0.5); color:#fff; border-radius:8px; min-width:250px; }
-        #nameOverlay input::placeholder { color:rgba(255,255,255,0.6); }
-        #nameOverlay input:focus { outline:none; border-color:rgba(255,255,255,0.9); }
-        #nameError { color:#ff6b6b; font-size:18px; margin-top:15px; font-family:Arial,sans-serif; }
+        #nameOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:1000; }
+        #nameOverlay .name-box { padding:16px 24px; background:rgba(0,0,0,0.6); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); box-sizing:border-box; }
+        #nameOverlay input { font:16px Arial,sans-serif; padding:8px 12px; background:transparent; border:none; color:rgba(255,255,255,0.95); width:160px; text-align:center; }
+        #nameOverlay input::placeholder { color:rgba(255,255,255,0.95); opacity:0.7; }
+        #nameOverlay input:focus { outline:none; }
+        #nameError { color:#ff6b6b; font:14px Arial,sans-serif; margin-top:8px; text-align:center; line-height:1.2; }
         #leaderboardOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:1001; }
         #leaderboardOverlay h2 { color:#fff; font:bold 24px Arial,sans-serif; margin-bottom:20px; }
         #leaderboardList { color:#fff; font:bold 24px Arial,sans-serif; list-style:none; padding:0; margin:0 0 25px 0; max-height:60vh; overflow-y:auto; width:400px; }
@@ -17,6 +20,17 @@
         #leaderboardList li.separator { display:block; text-align:center; padding:4px 0; color:rgba(255,255,255,0.6); }
         #playAgainBtn { font-size:20px; padding:12px 30px; background:rgba(100,200,100,0.8); border:none; color:#fff; border-radius:8px; cursor:pointer; }
         #playAgainBtn:hover { background:rgba(100,200,100,1); }
+        #tutorialOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:999; pointer-events:none; opacity:0; transition:opacity 1.2s ease-in; }
+        #tutorialOverlay.visible { opacity:1; }
+        #tutorialOverlay .tutorial-box { text-align:center; padding:30px 50px; background:rgba(0,0,0,0.6); border-radius:12px; max-width:400px; }
+        #tutorialOverlay .tutorial-box p { color:rgba(255,255,255,0.95); font:18px Arial,sans-serif; margin:0 0 20px 0; line-height:1.5; }
+        #tutorialOverlay .tutorial-box .arrow-pad { display:flex; flex-direction:column; align-items:center; margin-top:15px; }
+        #tutorialOverlay .tutorial-box .key-row { display:flex; justify-content:center; align-items:center; gap:8px; }
+        #tutorialOverlay .tutorial-box .key-row-up { margin-bottom:6px; }
+        #tutorialOverlay .tutorial-box .key { padding:8px 14px; background:rgba(255,255,255,0.2); border:2px solid rgba(255,255,255,0.5); border-radius:6px; color:#fff; font:bold 16px Arial,sans-serif; min-width:44px; text-align:center; }
+        #tutorialOverlay .tutorial-box .key-blink-left { animation:keyblink 0.8s ease-in-out infinite; }
+        #tutorialOverlay .tutorial-box .key-blink-right { animation:keyblink 0.8s ease-in-out 0.4s infinite; }
+        @keyframes keyblink { 0%, 100% { opacity:1; box-shadow:0 0 8px rgba(255,255,255,0.5); } 50% { opacity:0.5; box-shadow:0 0 4px rgba(255,255,255,0.3); } }
     </style>
     <script type="text/javascript" src="../socket.io/socket.io.js"></script>
     <script type="text/javascript" src="media/lib/jquery-2.1.0.min.js"></script>
@@ -39,13 +53,33 @@
     <body style="margin:0;padding:0;overflow:hidden;">
 	<canvas id="Lake" width="800" height="800" style="display:block;"></canvas>
 	<div id="nameOverlay">
-		<input type="text" id="playerNameInput" placeholder="Fish Name" maxlength="12" autocomplete="off" />
-		<div id="nameError"></div>
+		<div class="name-box">
+			<input type="text" id="playerNameInput" placeholder="Fish Name" maxlength="12" autocomplete="off" />
+			<div id="nameError"></div>
+		</div>
 	</div>
 	<div id="leaderboardOverlay">
 		<h2>Leaderboard</h2>
 		<ul id="leaderboardList"></ul>
 		<button id="playAgainBtn">Play Again</button>
+	</div>
+	<div id="tutorialOverlay">
+		<div class="tutorial-box">
+			<p>Eat to survive and Avoid bigger fish.</p>
+            <p>Use ← → to move.</p>
+			<div class="arrow-pad">
+				<div class="key-row key-row-up">
+					<span class="key">↑</span>
+				</div>
+				<div class="key-row key-row-middle">
+					<span class="key key-blink-left">←</span>
+					<span class="key">↓</span>
+					<span class="key key-blink-right">→</span>
+				</div>
+			</div>
+            <br>
+            <p>Use ↑ to swim faster, ↓ to swim slower.</p>
+		</div>
 	</div>
     </body>
 </html>
