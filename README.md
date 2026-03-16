@@ -22,6 +22,45 @@ node fish_server.js 9999
 
 The server listens on port **9999** (or the port passed as argument). Config is loaded from `www/media/js/config.js`.
 
+## Server deployment (PM2)
+
+For production, use [PM2](https://pm2.keymetrics.io/) to keep the process running:
+
+```bash
+# Start
+pm2 start fish_server.js --name fishbowl -- 9999
+
+# Restart after code changes (PM2 does NOT auto-restart on file edit)
+pm2 restart fishbowl
+
+# Zero-downtime reload
+pm2 reload fishbowl
+
+# Optional: watch mode (auto-restart on file changes)
+pm2 start fish_server.js --name fishbowl --watch --ignore-watch="node_modules" -- 9999
+
+# Persist across reboots
+pm2 save
+pm2 startup
+```
+
+### Verify the server is running
+
+```bash
+# Check process on port 9999
+lsof -i :9999
+# or
+ss -tlnp | grep 9999
+
+# PM2 status
+pm2 list
+pm2 logs fishbowl
+```
+
+### Nginx
+
+See `nginx-fishbowl.conf` for reverse proxy setup. The app must listen on `127.0.0.1:9999`.
+
 ## How to play
 
 1. Open in your browser: **http://localhost:9999/www/fish.html**
