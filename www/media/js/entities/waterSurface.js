@@ -49,6 +49,7 @@
 		var step = 5;
 		var cx = lake.x;
 		var cy = lake.y;
+		var halfLake = lakeSize / 2;
 		var cw = (window.Fishbowl.stage && window.Fishbowl.stage.canvas) ? window.Fishbowl.stage.canvas.width : 800;
 		var ch = (window.Fishbowl.stage && window.Fishbowl.stage.canvas) ? window.Fishbowl.stage.canvas.height : 800;
 		var visibleExtentX = (cw / lakeSize) / 2;
@@ -58,6 +59,8 @@
 			var o = this.offsets[i];
 			var baseX = o.dx;
 			var baseY = o.dy;
+
+			if (baseY < -halfLake || baseY > halfLake) continue;
 
 			if (baseX + halfW < cx - visibleExtentX){
 				o.dx = cx + visibleExtentX + halfW;
@@ -79,8 +82,14 @@
 			baseX = o.dx;
 			baseY = o.dy;
 
+			if (baseY < -halfLake || baseY > halfLake) continue;
+
+			var xStart = Math.max(baseX - halfW, -halfLake);
+			var xEnd = Math.min(baseX + halfW, halfLake);
+			if (xStart >= xEnd) continue;
+
 			var pts = [];
-			for (var x = baseX - halfW; x <= baseX + halfW; x += step) {
+			for (var x = xStart; x <= xEnd; x += step) {
 				var z = this.elevation(x, this.time);
 				pts.push({ x : x, y: baseY + z });
 			}

@@ -36,6 +36,7 @@
 
 		var pos = data.pos;
 		state.waterSurface = new WaterSurface();
+		state.lakeBorder = new LakeBorder();
 		state.lake = new Lake();
 		state.lake.x = pos.x;
 		state.lake.y = pos.y;
@@ -51,13 +52,18 @@
 		var color = createjs.Graphics.getHSL(Math.ceil(Math.random() * 360), 100, 50);
 		state.myFish = new Fish(data.id, pos, [0, 0, 0, 0, 0], color, state.playerName);
 
+		var halfLake = (cfg.LAKE_SIZE || 1000) / 2;
+		var foodMargin = 1;
 		for (var j = 0; j < state.lake.mObjectN; j++) {
-			var lx = cfg.FOOD_SPAWN_HALF - Math.random() * cfg.FOOD_SPAWN_HALF * 2 + state.lake.x;
-			var ly = cfg.FOOD_SPAWN_HALF - Math.random() * cfg.FOOD_SPAWN_HALF * 2 + state.lake.y;
-			state.lake.mObject[j] = new Food(Math.random() * 0.5 + 0.04, lx, ly);
+			var size = Math.random() * 0.5 + 0.04;
+			var lx = -halfLake + foodMargin + Math.random() * Math.max(0, 2 * halfLake - 2 * foodMargin);
+			var ly = -halfLake + foodMargin + Math.random() * Math.max(0, 2 * halfLake - 2 * foodMargin);
+			state.lake.mObject[j] = new Food(size, lx, ly);
 			state.lakeStage.addChildAt(state.lake.mObject[j], 0);
 		}
 		state.lakeStage.addChild(state.waterSurface.shape);
+		state.lakeStage.addChild(state.lakeBorder.shape);
+		state.lakeStage.addChildAt(state.lakeBorder.innerLineShape, 0);
 		state.stage.addChildAt(state.bg, 0);
 	}
 
@@ -80,7 +86,12 @@
 			state.lakeStage.scaleY = fish.lake_size;
 			if (state.waterSurface) {
 				state.waterSurface.draw(lake, fish.lake_size, dt);
-				state.lakeStage.setChildIndex(state.waterSurface.shape, state.lakeStage.getNumChildren() - 1);
+				state.lakeStage.setChildIndex(state.waterSurface.shape, state.lakeStage.getNumChildren() - 2);
+			}
+			if (state.lakeBorder) {
+				state.lakeBorder.draw(lake, fish.lake_size, fish);
+				state.lakeStage.setChildIndex(state.lakeBorder.innerLineShape, 0);
+				state.lakeStage.setChildIndex(state.lakeBorder.shape, state.lakeStage.getNumChildren() - 1);
 			}
 
 			_.each(lake.mObject, function(obj) {
@@ -143,6 +154,15 @@
 		key.up("left", function() { if (state.myFish) state.myFish.left = false; return false; });
 		key.down("right", function() { if (state.myFish) state.myFish.right = true; return false; });
 		key.up("right", function() { if (state.myFish) state.myFish.right = false; return false; });
+		key.down("q", function() {
+			if (state.myFish) {
+				state.myFish.life = Math.min(state.myFish.life + 30, state.myFish.max_life);
+
+				state.myFish.size_time += 10;
+				state.myFish.size_time = Math.min(state.myFish.size_time, cfg.FISH_END_LIFE);
+			}
+			return false;
+		});
 	}
 
 	function resetKeys() {

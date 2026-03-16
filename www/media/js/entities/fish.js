@@ -1,7 +1,7 @@
 "use strict";
 
 (function (window) {
-	var cfg = window.FishbowlConfig || { MOUTH_SIZE_FACTOR: 5, CHASE_DISTANCE_FACTOR: 5, FOOD_SPAWN_HALF: 400, LAKE_SIZE: 10000, FISH_INITIAL_LIFE: 180, FISH_MIN_LIFE: 60, FISH_LIFE_DECAY_DURATION: 1200, START_LAKE_SIZE: 10, FISH_START_SIZE: 0.04 };
+	var cfg = window.FishbowlConfig || { MOUTH_SIZE_FACTOR: 5, CHASE_DISTANCE_FACTOR: 5, FOOD_SPAWN_HALF: 400, LAKE_SIZE: 10000, FISH_INITIAL_LIFE: 180, FISH_END_LIFE: 1200, LAKE_START_SIZE: 10, FISH_START_SIZE: 0.04 };
 	var state = window.Fishbowl;
 
 	function Fish(id, pos, ctp, colorStr, name) {
@@ -20,23 +20,20 @@
 		this.mounth = { x: 0, y: 0 };
 		this.fin = { x: 0, y: 0 };
 
-		var decayDuration = cfg.FISH_LIFE_DECAY_DURATION || 20 * 60;
-		var initialLife = cfg.FISH_INITIAL_LIFE || 3 * 60;
-		var minLife = cfg.FISH_MIN_LIFE || 1 * 60;
-		var startLakeSize = cfg.START_LAKE_SIZE || 10;
-		var endLakeSize = 0.5;
-		var startFishSize = cfg.FISH_START_SIZE || 0.04;
-		var endFishSize = 1.2 / endLakeSize;
-		var startScreenSize = startFishSize * startLakeSize;
-		var endScreenSize = endFishSize * endLakeSize;
+		var lakeStartSize = cfg.LAKE_START_SIZE;
+		var lakeEndSize = cfg.LAKE_END_SIZE;
+		var startFishSize = cfg.FISH_START_SIZE / cfg.LAKE_START_SIZE;
+		var endFishSize = cfg.FISH_END_SIZE / cfg.LAKE_END_SIZE;
+		var startScreenSize = startFishSize * lakeStartSize;
+		var endScreenSize = endFishSize * lakeEndSize;
 
 		this.time = 0;
-		this.max_life = initialLife;
-		this.life = initialLife;
+		this.max_life = cfg.FISH_INITIAL_LIFE;
+		this.life = cfg.FISH_INITIAL_LIFE;
 		this.over = 0;
 		this.size_time = 0;
 		this.size = startFishSize;
-		this.lake_size = startLakeSize;
+		this.lake_size = lakeStartSize;
 		this.screen_size = startScreenSize;
 		this.max_weight = Math.pow(this.size, 3) * 100;
 		this.alive = true;
@@ -193,7 +190,7 @@
 
 	Fish.prototype.bite = function(predator, prey) {
 		var fP = this.fishParts;
-		var mouthRadius = (cfg.MOUTH_SIZE_FACTOR || 5) * predator.size;
+		var mouthRadius = cfg.MOUTH_SIZE_FACTOR  * predator.size;
 		var d = prey.fishParts.dimS[prey.fishParts.nRPart - 1];
 		var segmentRadius = Math.min(d.x, d.y) / 2 * prey.size;
 		if (mouthRadius <= segmentRadius) return;
@@ -207,7 +204,7 @@
 					this.life -= 15;
 					this.ctp = this.ctp.splice(0, prey.fishParts.nRPart);
 				} else {
-					this.life += (prey.size / this.size) * 40;
+					this.life += (prey.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FISH;
 					if (this.life >= this.max_life) {
 						this.over += (this.life - this.max_life) / 2;
 						this.life = this.max_life;
@@ -218,7 +215,7 @@
 					if (prey === this) {
 						this.alive = false;
 					} else {
-						this.life += (prey.size / this.size) * 40;
+						this.life += (prey.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FISH;
 						if (this.life >= this.max_life) {
 							this.over += (this.life - this.max_life) / 2;
 							this.life = this.max_life;
@@ -245,19 +242,22 @@
 		if (!obj.active) return;
 		var pos = obj.localToLocal(0, 0, lakeStage);
 		var dis = Math.sqrt(Math.pow(this.mounth.x - pos.x, 2) + Math.pow(this.mounth.y - pos.y, 2));
-		var mouthRadius = (cfg.MOUTH_SIZE_FACTOR || 5) * this.size;
+		var mouthRadius = cfg.MOUTH_SIZE_FACTOR * this.size;
 		var foodRadius = obj.size;
 		var intersect = dis < mouthRadius + foodRadius;
 		if (mouthRadius > foodRadius) {
 			if (intersect) {
-				this.life += (obj.size / mouthRadius) * 20;
+				this.life += (obj.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FOOD;
 				if (this.life >= this.max_life) {
 					this.over += (this.life - this.max_life) / 2;
 					this.life = this.max_life;
 				}
-				var lx = cfg.FOOD_SPAWN_HALF - Math.random() * cfg.FOOD_SPAWN_HALF * 2 + lake.x;
-				var ly = cfg.FOOD_SPAWN_HALF - Math.random() * cfg.FOOD_SPAWN_HALF * 2 + lake.y;
-				obj.activate(Math.random() * 0.5 + 0.02, lx, ly);
+				var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
+				var foodMargin = 1;
+				var newSize = Math.random() * 0.5 + 0.02;
+				var lx = -halfLake + foodMargin + Math.random() * Math.max(0, 2 * halfLake - 2 * foodMargin);
+				var ly = -halfLake + foodMargin + Math.random() * Math.max(0, 2 * halfLake - 2 * foodMargin);
+				obj.activate(newSize, lx, ly);
 			}
 			var chaseDist = mouthRadius + foodRadius * (cfg.CHASE_DISTANCE_FACTOR || 5);
 			if (dis < chaseDist) {
@@ -278,14 +278,13 @@
 
 	Fish.prototype.update = function(dt, lake) {
 		var fP = this.fishParts;
-		var decayDuration = cfg.FISH_LIFE_DECAY_DURATION || 20 * 60;
-		var initialLife = cfg.FISH_INITIAL_LIFE || 3 * 60;
-		var minLife = cfg.FISH_MIN_LIFE || 1 * 60;
-		var startLakeSize = cfg.START_LAKE_SIZE || 10;
-		var endLakeSize = 0.5;
+		var endLife = cfg.FISH_END_LIFE || 20 * 60;
+		var lakeStartSize = cfg.LAKE_START_SIZE || 10;
+		var lakeEndSize = cfg.LAKE_END_SIZE || 0.5;
 		var startFishSize = cfg.FISH_START_SIZE || 0.04;
-		var startScreenSize = startFishSize * startLakeSize;
-		var endScreenSize = 1.2 / endLakeSize * endLakeSize;
+		var endFishSize = cfg.FISH_END_SIZE || 2.4;
+		var startScreenSize = startFishSize * lakeStartSize;
+		var endScreenSize = endFishSize * lakeEndSize;
 
 		if (this.life <= 0 || !this.alive) {
 			this.alive = false;
@@ -306,14 +305,14 @@
 
 		this.fishParts.cont[0].regY = -(this.velt / 10);
 
-		this.cta[0] = this.sp * (1 + this.ssp * 0.7) - this.ctv[0] * 2;
+		this.cta[0] = this.sp * (1 + this.ssp * 0.7)  - this.ctv[0] * 2;
 		this.ctv[0] = this.cta[0] * dt + this.ctv[0];
 		this.ctp[0] = this.ctv[0] * dt + this.ctp[0];
 		var ctat = this.cta[0];
 		var ctvt = this.ctv[0];
 		var ctata = 0, ctvta = 0;
 		for (var i = 1; i < this.fishParts.nRPart; i++) {
-			this.cta[i] = -ctat * 2 - ctvt * 5 - this.ctv[i] * 12 - this.ctp[i] * 35 * (1 + this.ssp * 1.05);
+			this.cta[i] = - ctat * 2 - ctvt * 5 - this.ctv[i] * 12 - this.ctp[i] * 35 * (1 + this.ssp * 1.05);
 			ctat += this.cta[i];
 			ctvt += this.ctv[i];
 			this.ctv[i] = this.cta[i] * dt + this.ctv[i];
@@ -325,30 +324,37 @@
 		this.pos2 = ctata / this.fishParts.nPart;
 		this.vel2 = ctvta / this.fishParts.nPart;
 		this.acc2 = ctata / this.fishParts.nPart;
-		this.acct = ((this.vel2 * 45 + this.acc2 * 4) / this.lake_size - this.velt * ((1 - this.fsp * 0.5) + this.ssp * 4) * 0.4);
+		this.acct = (this.vel2 * 45 + this.acc2 * 4 *(this.size / cfg.FISH_START_SIZE)) / 10.0 - this.velt * ((1 - this.fsp * 0.5) + this.ssp * 4) * 0.4 ;
 		this.velt = this.acct * dt + this.velt;
-		if (this.velt > 600 / this.lake_size) this.velt = 600 / this.lake_size;
+		var maxSpeed = cfg.FISH_MAX_SPEED * (this.size / cfg.FISH_START_SIZE);
+		if (this.velt > maxSpeed) this.velt = maxSpeed;
 		if (this.velt < 0) this.velt = 0;
 		this.pos.x += Math.sin(this.ctp[0]) * this.velt * dt;
 		this.pos.y += -Math.cos(this.ctp[0]) * this.velt * dt;
+		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
+		var fishMargin = this.size * 120;
+		var innerHalf = Math.max(0, halfLake - fishMargin);
+		this.pos.x = Math.max(-innerHalf, Math.min(innerHalf, this.pos.x));
+		this.pos.y = Math.max(-innerHalf, Math.min(innerHalf, this.pos.y));
 		this.acct = 0;
 
 		if (!this.nextPos) {
 			lake.ax = (this.pos.x - lake.x) * 3 - lake.vx * 2;
-			lake.ay = (this.pos.y - lake.y) * 3 - lake.vy * 2;
+			lake.ay = (this.pos.y - lake.y) * 3  - lake.vy * 2;
 			lake.vx = lake.ax * dt + lake.vx;
 			lake.vy = lake.ay * dt + lake.vy;
 			lake.x = lake.vx * dt + lake.x;
 			lake.y = lake.vy * dt + lake.y;
+			lake.x = Math.max(-halfLake, Math.min(halfLake, lake.x));
+			lake.y = Math.max(-halfLake, Math.min(halfLake, lake.y));
 		}
 
-		this.time = Math.min(this.time + dt, decayDuration);
-		this.max_life = (minLife - initialLife) / decayDuration * this.time + initialLife;
+		this.time = this.time + dt;
 		if (this.size_time < this.over) {
-			this.size_time = Math.min(this.size_time + dt, decayDuration);
+			this.size_time = Math.min(this.size_time + dt, endLife);
 		}
-		this.screen_size = (endScreenSize - startScreenSize) / decayDuration * this.size_time + startScreenSize;
-		this.lake_size = (endLakeSize - startLakeSize) / decayDuration * this.size_time + startLakeSize;
+		this.screen_size = (endScreenSize - startScreenSize) / endLife * this.size_time + startScreenSize;
+		this.lake_size = (lakeEndSize - lakeStartSize) / endLife * this.size_time + lakeStartSize;
 		this.size = this.screen_size / this.lake_size;
 
 		var num = Math.pow(this.size, 3) * 100;
@@ -356,8 +362,6 @@
 		var weightStr = num < 0.1 ? (num * 1000).toFixed(1) + " g" : num < 0.5 ? Math.ceil(num * 1000) + " g" : num < 10 ? num.toFixed(2) + " kg" : num < 100 ? num.toFixed(1) + " kg" : Math.ceil(num) + " kg";
 		this.info.text = (this.name || "Fish") + " (" + weightStr + ")";
 
-		var maxVelt = 600 / this.lake_size;
-		var velFactor = Math.min(1, this.velt / maxVelt);
 		var targetSpread = ( - (this.ssp || 0) + (this.fsp || 0)) * 20;
 		this.finSpreadLateral += (targetSpread - this.finSpreadLateral) * 0.05;
 
@@ -367,7 +371,22 @@
 		this.updatePupils();
 
 		state.bg.graphics.clear();
-		state.bg.graphics.beginLinearGradientFill(["#77F", "#113"], [0, 1], 0, -cfg.LAKE_SIZE - lake.y * state.myFish.lake_size, 0, cfg.LAKE_SIZE - lake.y * state.myFish.lake_size).drawRect(-state.stage.x, -state.stage.y, state.stage.canvas.width, state.stage.canvas.height).endFill();
+		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
+		var ls = state.myFish.lake_size;
+		var lakeLeft = (-halfLake - lake.x) * ls;
+		var lakeRight = (halfLake - lake.x) * ls;
+		var lakeTop = (-halfLake - lake.y) * ls;
+		var lakeBottom = (halfLake - lake.y) * ls;
+		var sx = state.stage.x;
+		var sy = state.stage.y;
+		state.bg.graphics.beginFill("#888899").drawRect(-sx, -sy, state.stage.canvas.width, state.stage.canvas.height).endFill();
+		var drawL = Math.max(lakeLeft, -sx);
+		var drawR = Math.min(lakeRight, sx);
+		var drawT = Math.max(lakeTop, -sy);
+		var drawB = Math.min(lakeBottom, sy);
+		if (drawL < drawR && drawT < drawB) {
+			state.bg.graphics.beginLinearGradientFill(["#77F", "#113"], [0, 1], drawL, lakeTop, drawL, lakeBottom).drawRect(drawL, drawT, drawR - drawL, drawB - drawT).endFill();
+		}
 
 		this.set(this.ctp, this.pos, this.size, createjs.Graphics.getHSL(this.color, this.life / this.max_life * 200 - 100, 50), lake);
 		state.lakeStage.regX = lake.x;

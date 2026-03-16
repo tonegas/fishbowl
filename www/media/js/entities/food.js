@@ -52,6 +52,11 @@
 		this.myy += this.vY;
 		this.vCX /= 1.01;
 		this.vCY /= 1.01;
+		var cfg = window.FishbowlConfig || {};
+		var halfLake = (cfg.LAKE_SIZE || 1000) / 2;
+		var margin = (this.bounds || this.size || 1);
+		this.myx = Math.max(-halfLake + margin, Math.min(halfLake - margin, this.myx));
+		this.myy = Math.max(-halfLake + margin, Math.min(halfLake - margin, this.myy));
 		this.x = this.myx;
 		this.y = this.myy;
 	};

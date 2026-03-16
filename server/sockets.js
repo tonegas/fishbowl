@@ -45,9 +45,10 @@ function setupSockets(io, config) {
 
 		socket.on("new_fish", function(data) {
 			if (!socket.playerName) return;
+			var half = config.playerSpawnRange / 2;
 			var pos = {
-				x: Math.random() * config.playerSpawnRange,
-				y: Math.random() * config.playerSpawnRange
+				x: -half + Math.random() * config.playerSpawnRange,
+				y: -half + Math.random() * config.playerSpawnRange
 			};
 			socket.emit("new_fish_id", {
 				id: nextFishId,
