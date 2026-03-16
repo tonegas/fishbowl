@@ -1,7 +1,7 @@
 "use strict";
 
 (function (window) {
-	var cfg = window.FishbowlConfig || { MOUTH_SIZE_FACTOR: 5, CHASE_DISTANCE_FACTOR: 5, FOOD_SPAWN_HALF: 400, LAKE_SIZE: 10000, FISH_INITIAL_LIFE: 180, FISH_END_LIFE: 1200, LAKE_START_SIZE: 10, FISH_START_SIZE: 0.04, WHOLE_FISH_SIZE_RATIO: 3 };
+	var cfg = window.FishbowlConfig || { MOUTH_SIZE_FACTOR: 5, CHASE_DISTANCE_FACTOR: 5, FOOD_SPAWN_HALF: 400, LAKE_SIZE: 10000, FISH_INITIAL_LIFE: 180, FISH_END_LIFE: 1200, LAKE_START_SIZE: 10, FISH_START_SIZE: 0.04, FISH_END_SIZE: 2, WHOLE_FISH_SIZE_RATIO: 3, FOOD_SIZE_MIN: 0.02, FOOD_SIZE_MAX: 0.54 };
 	var state = window.Fishbowl;
 
 	function Fish(id, pos, ctp, colorStr, name) {
@@ -290,7 +290,7 @@
 				}
 				var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
 				var foodSpawnRadius = cfg.FOOD_SPAWN_RADIUS || cfg.FOOD_SPAWN_HALF || 1000;
-				var newSize = Math.random() * 0.5 + 0.02;
+				var newSize = cfg.FOOD_SIZE_MIN + Math.random() * (cfg.FOOD_SIZE_MAX - cfg.FOOD_SIZE_MIN);
 				var lx = lake.x + (Math.random() * 2 - 1) * foodSpawnRadius;
 				var ly = lake.y + (Math.random() * 2 - 1) * foodSpawnRadius;
 				lx = Math.max(-halfLake + 1, Math.min(halfLake - 1, lx));

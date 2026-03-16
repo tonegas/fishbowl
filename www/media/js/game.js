@@ -81,7 +81,7 @@
 		var cx = state.lake.x;
 		var cy = state.lake.y;
 		for (var j = 0; j < state.lake.mObjectN; j++) {
-			var size = Math.random() * 0.5 + 0.04;
+			var size = cfg.FOOD_SIZE_MIN + Math.random() * (cfg.FOOD_SIZE_MAX - cfg.FOOD_SIZE_MIN);
 			var lx = cx + (Math.random() * 2 - 1) * foodSpawnRadius;
 			var ly = cy + (Math.random() * 2 - 1) * foodSpawnRadius;
 			lx = Math.max(-halfLake + 1, Math.min(halfLake - 1, lx));
