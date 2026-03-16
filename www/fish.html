@@ -11,9 +11,10 @@
         #leaderboardOverlay h2 { color:#fff; font:bold 24px Arial,sans-serif; margin-bottom:20px; }
         #leaderboardList { color:#fff; font:bold 24px Arial,sans-serif; list-style:none; padding:0; margin:0 0 25px 0; max-height:60vh; overflow-y:auto; width:320px; }
         #leaderboardList li { padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.2); display:table; width:100%; box-sizing:border-box; table-layout:fixed; }
-        #leaderboardList li .rank { display:table-cell; width:28px; vertical-align:middle; }
+        #leaderboardList li .rank { display:table-cell; width:40px; vertical-align:middle; }
         #leaderboardList li .name { display:table-cell; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }
         #leaderboardList li .weight { display:table-cell; width:85px; text-align:right; vertical-align:middle; white-space:nowrap; }
+        #leaderboardList li.separator { display:block; text-align:center; padding:4px 0; color:rgba(255,255,255,0.6); }
         #playAgainBtn { font-size:20px; padding:12px 30px; background:rgba(100,200,100,0.8); border:none; color:#fff; border-radius:8px; cursor:pointer; }
         #playAgainBtn:hover { background:rgba(100,200,100,1); }
     </style>
@@ -22,9 +23,16 @@
     <script type="text/javascript" src="media/lib/createjs-2013.12.12.min.js"></script>
     <script type="text/javascript" src="media/lib/lodash-2.4.1.min.js"></script>
     <script type="text/javascript" src="media/lib/kibo.js"></script>
-    <script type="text/javascript" src="media/js/food.js"></script>
-	<script type="text/javascript" src="media/js/fish.js"></script>
-	<script type="text/javascript" src="media/js/lake.js"></script>
+    <script type="text/javascript" src="media/js/config.js"></script>
+    <script type="text/javascript" src="media/js/socket.js"></script>
+    <script type="text/javascript" src="media/js/entities/lake.js"></script>
+    <script type="text/javascript" src="media/js/entities/algae.js"></script>
+    <script type="text/javascript" src="media/js/entities/food.js"></script>
+    <script type="text/javascript" src="media/js/entities/fish.js"></script>
+    <script type="text/javascript" src="media/js/ui.js"></script>
+    <script type="text/javascript" src="media/js/network.js"></script>
+    <script type="text/javascript" src="media/js/game.js"></script>
+    <script type="text/javascript" src="media/js/main.js"></script>
     </head>
     <body style="margin:0;padding:0;overflow:hidden;">
 	<canvas id="Lake" width="800" height="800" style="display:block;"></canvas>
@@ -39,5 +47,3 @@
 	</div>
     </body>
 </html>
-
-
