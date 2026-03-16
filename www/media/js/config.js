@@ -2,8 +2,8 @@
 
 (function (global) {
 	var cfg = {
-		lakeSize: 5000,
-		foodCount: 5000,
+		lakeSize: 10000,
+		foodCount: 1000,
 		foodSpawnRadius: 1000,
 		mouthSizeFactor: 7,
 		chaseDistanceFactor: 100,
@@ -14,7 +14,12 @@
 		fishStartSize: 0.04,
 		algaeCount: 500,
 		algaeSpawnRange: 5000,
-		playerSpawnRange: 100
+		playerSpawnRange: 100,
+		waterSurfaceLineSpacing: 100,
+		waterSurfaceLineCount: 10,
+		waterLineLengthX: 250,
+		waterLineThicknessMin: 0.1,
+		waterLineThicknessMax: 5.0
 	};
 
 	if (typeof module !== "undefined" && module.exports) {
@@ -32,7 +37,12 @@
 			FISH_MIN_LIFE: cfg.fishMinLife,
 			FISH_LIFE_DECAY_DURATION: cfg.fishLifeDecayDuration,
 			START_LAKE_SIZE: cfg.startLakeSize,
-			FISH_START_SIZE: cfg.fishStartSize
+			FISH_START_SIZE: cfg.fishStartSize,
+			WATER_LINE_SPACING: cfg.waterSurfaceLineSpacing,
+			WATER_LINE_COUNT: cfg.waterSurfaceLineCount,
+			WATER_LINE_LENGTH_X: cfg.waterLineLengthX,
+			WATER_LINE_THICKNESS_MIN: cfg.waterLineThicknessMin,
+			WATER_LINE_THICKNESS_MAX: cfg.waterLineThicknessMax
 		};
 		window.Fishbowl = {
 			stage: null,

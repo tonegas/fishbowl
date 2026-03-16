@@ -35,6 +35,7 @@
 		state.stage.addChild(state.lakeStage);
 
 		var pos = data.pos;
+		state.waterSurface = new WaterSurface();
 		state.lake = new Lake();
 		state.lake.x = pos.x;
 		state.lake.y = pos.y;
@@ -56,6 +57,7 @@
 			state.lake.mObject[j] = new Food(Math.random() * 0.5 + 0.04, lx, ly);
 			state.lakeStage.addChildAt(state.lake.mObject[j], 0);
 		}
+		state.lakeStage.addChild(state.waterSurface.shape);
 		state.stage.addChildAt(state.bg, 0);
 	}
 
@@ -76,6 +78,10 @@
 			network.sendFish(socket);
 			state.lakeStage.scaleX = fish.lake_size;
 			state.lakeStage.scaleY = fish.lake_size;
+			if (state.waterSurface) {
+				state.waterSurface.draw(lake, fish.lake_size, dt);
+				state.lakeStage.setChildIndex(state.waterSurface.shape, state.lakeStage.getNumChildren() - 1);
+			}
 
 			_.each(lake.mObject, function(obj) {
 				if (obj.size < fish.size) {
