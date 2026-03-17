@@ -30,7 +30,6 @@
 		this.time = 0;
 		this.max_life = cfg.FISH_INITIAL_LIFE;
 		this.life = cfg.FISH_INITIAL_LIFE;
-		this.over = 0;
 		this.size_time = 0;
 		this.size = startFishSize;
 		this.lake_size = lakeStartSize;
@@ -188,6 +187,15 @@
 		}
 	};
 
+	Fish.prototype.addLifeGain = function(consumedSize, gainType) {
+		var gain = (consumedSize / this.size) * (gainType === "fish" ? cfg.FISH_LIFE_GAIN_FROM_FISH : cfg.FISH_LIFE_GAIN_FROM_FOOD);
+		this.life += gain;
+		if (this.life >= this.max_life) {
+			let over = (this.life - this.max_life) / 2;
+			this.life = this.max_life + over;
+		}
+	};
+
 	Fish.prototype.bite = function(predator, prey) {
 		var fP = this.fishParts;
 		var mouthRadius = cfg.MOUTH_SIZE_FACTOR  * predator.size;
@@ -206,11 +214,7 @@
 					this.alive = false;
 				} else {
 					for (var p = 0; p < totalParts; p++) {
-						this.life += (prey.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FISH;
-						if (this.life >= this.max_life) {
-							this.over += (this.life - this.max_life) / 2;
-							this.life = this.max_life;
-						}
+						this.addLifeGain(prey.size, "fish");
 					}
 					prey.die();
 				}
@@ -225,11 +229,7 @@
 						this.life -= 15;
 						this.ctp = this.ctp.splice(0, prey.fishParts.nRPart);
 					} else {
-						this.life += (prey.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FISH;
-						if (this.life >= this.max_life) {
-							this.over += (this.life - this.max_life) / 2;
-							this.life = this.max_life;
-						}
+						this.addLifeGain(prey.size, "fish");
 					}
 				}
 
@@ -237,11 +237,7 @@
 					if (prey === this) {
 						this.alive = false;
 					} else {
-						this.life += (prey.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FISH;
-						if (this.life >= this.max_life) {
-							this.over += (this.life - this.max_life) / 2;
-							this.life = this.max_life;
-						}
+						this.addLifeGain(prey.size, "fish");
 						prey.die();
 					}
 				}
@@ -250,11 +246,7 @@
 					if (prey === this) {
 						this.alive = false;
 					} else {
-						this.life += (prey.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FISH;
-						if (this.life >= this.max_life) {
-							this.over += (this.life - this.max_life) / 2;
-							this.life = this.max_life;
-						}
+						this.addLifeGain(prey.size, "fish");
 						prey.die();
 					}
 				}
@@ -283,11 +275,7 @@
 		var intersect = dis < mouthRadius + foodRadius;
 		if (mouthRadius > foodRadius) {
 			if (intersect) {
-				this.life += (obj.size / this.size) * cfg.FISH_LIFE_GAIN_FROM_FOOD;
-				if (this.life >= this.max_life) {
-					this.over += (this.life - this.max_life) / 2;
-					this.life = this.max_life;
-				}
+				this.addLifeGain(obj.size, "food");
 				var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
 				var foodSpawnRadius = cfg.FOOD_SPAWN_RADIUS || cfg.FOOD_SPAWN_HALF || 1000;
 				var newSize = cfg.FOOD_SIZE_MIN + Math.random() * (cfg.FOOD_SIZE_MAX - cfg.FOOD_SIZE_MIN);
@@ -328,8 +316,6 @@
 			this.alive = false;
 			return this.alive;
 		}
-
-		this.life -= dt;
 
 		if (!this.nextPos) {
 			this.sp = this.left ? -6 : (this.right ? 6 : 0);
@@ -387,10 +373,12 @@
 			lake.y = Math.max(-halfLake, Math.min(halfLake, lake.y));
 		}
 
-		this.time = this.time + dt;
-		if (this.size_time < this.over) {
+		this.life -= dt;
+		this.time += dt;
+		if(this.life > this.max_life) {
 			this.size_time = Math.min(this.size_time + dt, endLife);
 		}
+
 		this.screen_size = (endScreenSize - startScreenSize) / endLife * this.size_time + startScreenSize;
 		this.lake_size = (lakeEndSize - lakeStartSize) / endLife * this.size_time + lakeStartSize;
 		this.size = this.screen_size / this.lake_size;
