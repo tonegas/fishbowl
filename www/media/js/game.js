@@ -36,7 +36,7 @@
 			createjs.Ticker.addEventListener("tick", tick);
 		}
 		state.stage = new createjs.Stage("Lake");
-		state.stage.enableDOMEvents(true);
+		state.stage.enableDOMEvents(false);
 		state.lakeStage = new createjs.Container();
 		state.bg = new createjs.Shape();
 		resize();
@@ -116,6 +116,24 @@
 			network.sendFish(socket);
 			state.lakeStage.scaleX = fish.lake_size;
 			state.lakeStage.scaleY = fish.lake_size;
+
+			var cw = state.stage.canvas.width;
+			var ch = state.stage.canvas.height;
+			var ls = fish.lake_size;
+			var margin = 1.3;
+			var halfW = (cw / ls) * margin;
+			var halfH = (ch / ls) * margin;
+			var vxMin = lake.x - halfW;
+			var vxMax = lake.x + halfW;
+			var vyMin = lake.y - halfH;
+			var vyMax = lake.y + halfH;
+
+			var i, o;
+			for (i = 0; i < state.lake.fObject.N; i++) {
+				o = state.lake.fObject.list[i];
+				o.visible = (o.x >= vxMin && o.x <= vxMax && o.y >= vyMin && o.y <= vyMax);
+			}
+
 			if (state.waterSurface) {
 				state.waterSurface.draw(lake, fish.lake_size, dt);
 				state.lakeStage.setChildIndex(state.waterSurface.shape, state.lakeStage.getNumChildren() - 2);
@@ -126,20 +144,30 @@
 				state.lakeStage.setChildIndex(state.lakeBorder.shape, state.lakeStage.getNumChildren() - 1);
 			}
 
+			var foodToRemove = [];
 			_.each(lake.mObject, function(obj) {
 				if (obj.size < fish.size / 2.0) {
 					state.lakeStage.removeChild(obj);
-					lake.mObject = _.without(lake.mObject, _.findWhere(lake.mObject, obj));
+					foodToRemove.push(obj);
 				} else {
 					obj.update(event, lake.x, lake.y);
+					obj.visible = (obj.x >= vxMin && obj.x <= vxMax && obj.y >= vyMin && obj.y <= vyMax);
 					fish.eat(obj);
 				}
 			});
+			if (foodToRemove.length) {
+				lake.mObject = _.difference(lake.mObject, foodToRemove);
+			}
 
 			var toRemove = [];
 			for (var i = 0; i < lake.otherFishId.length; i++) {
 				var other = lake.otherFish[lake.otherFishId[i]];
 				if (!other) continue;
+				var root = other.fishParts && other.fishParts.cont && other.fishParts.cont[0];
+				if (root) {
+					var ox = root.x, oy = root.y;
+					root.visible = (ox >= vxMin && ox <= vxMax && oy >= vyMin && oy <= vyMax);
+				}
 				fish.bite(fish, other);
 				if (other.alive) fish.bite(other, fish);
 				if (other.setAlive(-dt) === false) {
