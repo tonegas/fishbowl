@@ -120,7 +120,9 @@
 			var cw = state.stage.canvas.width;
 			var ch = state.stage.canvas.height;
 			var ls = fish.lake_size;
-			var margin = 1.3;
+			// Con pesce piccolo (ls grande) la viewport è stretta e le alghe appaiono "in ritardo".
+			// Aumentiamo il margin quando ls è grande per mostrare più alghe.
+			var margin = 1.3 * Math.max(1, ls / 2);
 			var halfW = (cw / ls) * margin;
 			var halfH = (ch / ls) * margin;
 			var vxMin = lake.x - halfW;
