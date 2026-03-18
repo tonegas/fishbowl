@@ -505,7 +505,7 @@
 
 	Fish.prototype.setAlive = function(val) {
 		if (val > 0) {
-			this.life = 2;
+			this.life = cfg.FISH_OTHER_LIFE || 2;
 			this.alive = true;
 		} else {
 			this.life += val;

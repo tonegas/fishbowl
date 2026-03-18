@@ -160,10 +160,16 @@
 			}
 
 			var toRemove = [];
+			var now = (typeof performance !== "undefined" && performance.now) ? performance.now() / 1000 : Date.now() / 1000;
 			for (var i = 0; i < lake.otherFishId.length; i++) {
 				var other = lake.otherFish[lake.otherFishId[i]];
 				if (!other) continue;
 				var root = other.fishParts && other.fishParts.cont && other.fishParts.cont[0];
+				if (root && other._lastPos && other._lastVelocity && other._lastUpdateTime !== undefined) {
+					var ext = now - other._lastUpdateTime;
+					root.x = other._lastPos.x + other._lastVelocity.x * ext;
+					root.y = other._lastPos.y + other._lastVelocity.y * ext;
+				}
 				if (root) {
 					var ox = root.x, oy = root.y;
 					root.visible = (ox >= vxMin && ox <= vxMax && oy >= vyMin && oy <= vyMax);
