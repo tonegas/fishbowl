@@ -199,60 +199,55 @@
 	Fish.prototype.bite = function(predator, prey) {
 		var fP = this.fishParts;
 		var mouthRadius = cfg.MOUTH_SIZE_FACTOR * predator.size;
-		var d = prey.fishParts.dimS[prey.fishParts.nRPart - 1];
-		var segmentRadius = Math.min(d.x, d.y) / 2 * prey.size;
-		if (mouthRadius <= segmentRadius) return;
-		var dis = Math.sqrt(Math.pow(predator.mounth.x - prey.fin.x, 2) + Math.pow(predator.mounth.y - prey.fin.y, 2));
-		var intersect = dis < mouthRadius + segmentRadius;
-		if (intersect) {
-			var sizeRatio = predator.size / prey.size;
-			var wholeFishRatio = cfg.WHOLE_FISH_SIZE_RATIO;
-			var canEat = predator.size > prey.size;
-			var eatWholeNow = canEat && (sizeRatio >= wholeFishRatio || prey.fishParts.nRPart <= 2);
-
-			if (eatWholeNow) {
+		var preyDimS = prey.fishParts.dimS;
+		var nRPart = prey.fishParts.nRPart;
+		var tailD = preyDimS[nRPart - 1];
+		var headD = preyDimS[0];
+		var tailSegmentRadius = Math.min(tailD.x, tailD.y) / 2 * prey.size;
+		var headDSegmentRadius = Math.min(headD.x, headD.y) / 2 * prey.size;
+		if (mouthRadius <= tailSegmentRadius) return;
+		var eatWhole = headDSegmentRadius < mouthRadius;
+		var dis = cfg.CHASE_DISTANCE_FACTOR * predator.size;
+		if (eatWhole) {
+			dis = Math.sqrt(
+				Math.pow(predator.mounth.x - prey.mounth.x, 2) + 
+				Math.pow(predator.mounth.y - prey.mounth.y, 2)
+			);
+			var intersect = dis < mouthRadius + headDSegmentRadius;
+			if (intersect) {
 				if (prey === this) {
 					this.alive = false;
 				} else {
-					var totalParts = prey.fishParts.nRPart > 2 ? (prey.fishParts.nRPart - 1) : 1;
+					var totalParts = nRPart > 2 ? (nRPart - 1) : 1;
 					for (var p = 0; p < totalParts; p++) {
 						this.addLifeGain(prey.size, "fish");
 					}
 					prey.die();
 				}
-			} else if (prey.fishParts.nRPart > 2) {
-				var segmentsToEat = Math.max(1, Math.min(Math.floor(sizeRatio), prey.fishParts.nRPart - 2));
-
-				for (var s = 0; s < segmentsToEat; s++) {
-					prey.lastfin.visible = false;
-					prey.fishParts.nRPart -= 1;
-					prey.lastfin = prey.fishParts.cont[prey.fishParts.nRPart - 1];
-					if (prey === this) {
-						this.life -= 15;
-						this.ctp.splice(prey.fishParts.nRPart);
-					} else {
-						this.addLifeGain(prey.size, "fish");
-					}
-				}
-
-				if (prey.fishParts.nRPart <= 2 && canEat) {
-					if (prey === this) {
-						this.alive = false;
-					} else {
-						this.addLifeGain(prey.size, "fish");
-						prey.die();
-					}
+			}
+		} else if (nRPart > 2 && tailSegmentRadius < mouthRadius) {
+			dis = Math.sqrt(
+				Math.pow(predator.mounth.x - prey.fin.x, 2) + 
+				Math.pow(predator.mounth.y - prey.fin.y, 2)
+			);
+			var intersect = dis < mouthRadius + tailSegmentRadius;
+			if (intersect) {
+				prey.lastfin.visible = false;
+				prey.fishParts.nRPart -= 1;
+				prey.lastfin = prey.fishParts.cont[prey.fishParts.nRPart - 1];
+				if (prey === this) {
+					this.life -= 15;
+					this.ctp.splice(prey.fishParts.nRPart);
+				} else {
+					this.addLifeGain(prey.size, "fish");
 				}
 			}
 		}
-		var chaseDist = mouthRadius + segmentRadius * (cfg.CHASE_DISTANCE_FACTOR || 5);
-		if (dis < chaseDist) {
+		if (dis < cfg.CHASE_DISTANCE_FACTOR * predator.size) {
 			this.look_target = (predator === this) ? { x: prey.fin.x, y: prey.fin.y } : { x: predator.mounth.x, y: predator.mounth.y };
 			this.updatePupils();
-			if (dis < mouthRadius + segmentRadius * 2) {
-				fP.mounth.scaleX = 2.2;
-				fP.mounth.scaleY = 1.5;
-			}
+			fP.mounth.scaleX = 2.2;
+			fP.mounth.scaleY = 1.5;
 		}
 	};
 
@@ -278,14 +273,11 @@
 				ly = Math.max(-halfLake + 1, Math.min(halfLake - 1, ly));
 				obj.activate(newSize, lx, ly);
 			}
-			var chaseDist = mouthRadius + foodRadius * (cfg.CHASE_DISTANCE_FACTOR || 5);
-			if (dis < chaseDist) {
+			if (dis < cfg.CHASE_DISTANCE_FACTOR * this.size) {
 				this.look_target = { x: pos.x, y: pos.y };
 				this.updatePupils();
-				if (dis < mouthRadius + foodRadius * 2) {
-					fP.mounth.scaleX = 2.2;
-					fP.mounth.scaleY = 1.5;
-				}
+				fP.mounth.scaleX = 2.2;
+				fP.mounth.scaleY = 1.5;
 			}
 		} else {
 			if (intersect) {
