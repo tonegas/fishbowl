@@ -138,12 +138,9 @@
 
 			if (state.waterSurface) {
 				state.waterSurface.draw(lake, fish.lake_size, dt);
-				state.lakeStage.setChildIndex(state.waterSurface.shape, state.lakeStage.getNumChildren() - 2);
 			}
 			if (state.lakeBorder) {
 				state.lakeBorder.draw(lake, fish.lake_size, fish);
-				state.lakeStage.setChildIndex(state.lakeBorder.innerLineShape, 0);
-				state.lakeStage.setChildIndex(state.lakeBorder.shape, state.lakeStage.getNumChildren() - 1);
 			}
 
 			var foodToRemove = [];
@@ -186,6 +183,43 @@
 				lake.otherFish[toRemove[k]] = null;
 			}
 			lake.otherFishId = _.difference(lake.otherFishId, toRemove);
+
+			/* Z-order: più grande = davanti (setChildIndex, sortChildren non in CreateJS 2013) */
+			var sortable = [];
+			sortable.push({ obj: fish.fishParts.cont[0], depth: 1000 + fish.size * cfg.MOUTH_SIZE_FACTOR/2 });
+			_.each(lake.otherFishId, function(id) {
+				var o = lake.otherFish[id];
+				if (o && o.fishParts && o.fishParts.cont && o.fishParts.cont[0] && state.lakeStage.getChildIndex(o.fishParts.cont[0]) >= 0) {
+					sortable.push({ obj: o.fishParts.cont[0], depth: 1000 + o.size });
+				}
+			});
+			_.each(lake.mObject, function(obj) {
+				if (state.lakeStage.getChildIndex(obj) >= 0) {
+					sortable.push({ obj: obj, depth: obj.size });
+				}
+			});
+			for (i = 0; i < state.lake.fObject.N; i++) {
+				sortable.push({ obj: state.lake.fObject.list[i], depth: 1000 + state.lake.fObject.list[i].scaleX });
+			}
+			sortable.sort(function(a, b) { return a.depth - b.depth; });
+			var order = [];
+			if (state.lakeBorder && state.lakeBorder.innerLineShape) {
+				order.push(state.lakeBorder.innerLineShape);
+			}
+			for (i = 0; i < sortable.length; i++) {
+				order.push(sortable[i].obj);
+			}
+			if (state.waterSurface && state.waterSurface.shape) {
+				order.push(state.waterSurface.shape);
+			}
+			if (state.lakeBorder && state.lakeBorder.shape) {
+				order.push(state.lakeBorder.shape);
+			}
+			for (i = 0; i < order.length; i++) {
+				if (state.lakeStage.getChildIndex(order[i]) >= 0) {
+					state.lakeStage.setChildIndex(order[i], i);
+				}
+			}
 
 			if (!fish.alive) {
 				handleFishDeath(socket);
@@ -233,6 +267,12 @@
 				state.myFish.life = Math.min(state.myFish.life + 30, state.myFish.max_life);
 				state.myFish.size_time += 10;
 				state.myFish.size_time = Math.min(state.myFish.size_time, cfg.FISH_END_LIFE);
+			}
+			return false;
+		});
+		key.down("w", function() {
+			if (state.cheatEnabled && state.myFish) {
+				state.myFish.size_time = Math.max(0, state.myFish.size_time - 10);
 			}
 			return false;
 		});
