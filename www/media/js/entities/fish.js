@@ -198,7 +198,7 @@
 
 	Fish.prototype.bite = function(predator, prey) {
 		var fP = this.fishParts;
-		var mouthRadius = cfg.MOUTH_SIZE_FACTOR  * predator.size;
+		var mouthRadius = cfg.MOUTH_SIZE_FACTOR * predator.size;
 		var d = prey.fishParts.dimS[prey.fishParts.nRPart - 1];
 		var segmentRadius = Math.min(d.x, d.y) / 2 * prey.size;
 		if (mouthRadius <= segmentRadius) return;
@@ -206,13 +206,15 @@
 		var intersect = dis < mouthRadius + segmentRadius;
 		if (intersect) {
 			var sizeRatio = predator.size / prey.size;
-			var wholeFishRatio = cfg.WHOLE_FISH_SIZE_RATIO || 3;
+			var wholeFishRatio = cfg.WHOLE_FISH_SIZE_RATIO;
+			var canEat = predator.size > prey.size;
+			var eatWholeNow = canEat && (sizeRatio >= wholeFishRatio || prey.fishParts.nRPart <= 2);
 
-			if (sizeRatio >= wholeFishRatio && predator.size > prey.size) {
-				var totalParts = prey.fishParts.nRPart > 2 ? (prey.fishParts.nRPart - 2 + 1) : 1;
+			if (eatWholeNow) {
 				if (prey === this) {
 					this.alive = false;
 				} else {
+					var totalParts = prey.fishParts.nRPart > 2 ? (prey.fishParts.nRPart - 1) : 1;
 					for (var p = 0; p < totalParts; p++) {
 						this.addLifeGain(prey.size, "fish");
 					}
@@ -227,22 +229,13 @@
 					prey.lastfin = prey.fishParts.cont[prey.fishParts.nRPart - 1];
 					if (prey === this) {
 						this.life -= 15;
-						this.ctp = this.ctp.splice(0, prey.fishParts.nRPart);
+						this.ctp.splice(prey.fishParts.nRPart);
 					} else {
 						this.addLifeGain(prey.size, "fish");
 					}
 				}
 
-				if (prey.fishParts.nRPart <= 2 && predator.size > prey.size) {
-					if (prey === this) {
-						this.alive = false;
-					} else {
-						this.addLifeGain(prey.size, "fish");
-						prey.die();
-					}
-				}
-			} else {
-				if (predator.size > prey.size) {
+				if (prey.fishParts.nRPart <= 2 && canEat) {
 					if (prey === this) {
 						this.alive = false;
 					} else {
