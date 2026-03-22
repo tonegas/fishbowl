@@ -9,7 +9,7 @@
 		foodSpawnRadius: 500,
 		foodSizeMin: 0.01,
 		foodSizeMax: 0.50,
-		mouthSizeFactor: 7,
+		mouthSizeFactor: 5,
 		chaseDistanceFactor: 100,
 		fishInitialLife: 3 * 60,
 		fishEndLife: 20 * 60,

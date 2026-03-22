@@ -83,7 +83,7 @@ var socketToFishId = {};
 
 		socket.on("fish_to_server", function(data) {
 			var fid = data.id;
-			if (fid !== undefined) {
+			if (fid !== undefined && socket.playerName) {
 				socketToFishId[socket.id] = fid;
 				var state = {
 					id: fid,
@@ -91,7 +91,7 @@ var socketToFishId = {};
 					ctp: data.ctp ? data.ctp.slice() : [],
 					size: data.size,
 					color: data.color,
-					name: data.name,
+					name: (socket.playerName || "").trim().substring(0, 12) || "Fish",
 					mouthOpen: data.mouthOpen === true
 				};
 				if (data.lookTarget && typeof data.lookTarget.x === "number" && typeof data.lookTarget.y === "number") {
