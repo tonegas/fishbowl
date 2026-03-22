@@ -5,9 +5,36 @@ var lake = require("./lake");
 
 var usedNames = {};
 var nextFishId = 1;
+var fishState = {};
+var socketToFishId = {};
 
 function setupSockets(io, config) {
 	var lakeWorld = lake.createLake(config);
+	var batchIntervalMs = config.batchIntervalMs || 50;
+	var batchTimer = null;
+
+	function broadcastFishBatch() {
+		var fishList = [];
+		for (var fid in fishState) {
+			if (fishState[fid]) fishList.push(fishState[fid]);
+		}
+		if (fishList.length > 0) {
+			io.sockets.emit("fish_batch", { fish: fishList });
+		}
+	}
+
+	function startBatchTimer() {
+		if (!batchTimer) {
+			batchTimer = setInterval(broadcastFishBatch, batchIntervalMs);
+		}
+	}
+
+	function stopBatchTimer() {
+		if (batchTimer) {
+			clearInterval(batchTimer);
+			batchTimer = null;
+		}
+	}
 
 	io.on("connection", function(socket) {
 		socket.playerName = null;
@@ -33,6 +60,14 @@ function setupSockets(io, config) {
 					delete usedNames[key];
 				}
 			}
+			var fid = socketToFishId[socket.id];
+			if (fid !== undefined) {
+				delete fishState[fid];
+				delete socketToFishId[socket.id];
+			}
+			if (Object.keys(fishState).length === 0) {
+				stopBatchTimer();
+			}
 		});
 
 		socket.on("canvas_to_server", function(data) {
@@ -40,7 +75,24 @@ function setupSockets(io, config) {
 		});
 
 		socket.on("fish_to_server", function(data) {
-			io.sockets.emit("fish_to_client", data);
+			var fid = data.id;
+			if (fid !== undefined) {
+				socketToFishId[socket.id] = fid;
+				var state = {
+					id: fid,
+					pos: { x: data.pos.x, y: data.pos.y },
+					ctp: data.ctp ? data.ctp.slice() : [],
+					size: data.size,
+					color: data.color,
+					name: data.name,
+					mouthOpen: data.mouthOpen === true
+				};
+				if (data.lookTarget && typeof data.lookTarget.x === "number" && typeof data.lookTarget.y === "number") {
+					state.lookTarget = { x: data.lookTarget.x, y: data.lookTarget.y };
+				}
+				fishState[fid] = state;
+				startBatchTimer();
+			}
 		});
 
 		socket.on("new_fish", function(data) {
@@ -60,6 +112,11 @@ function setupSockets(io, config) {
 		});
 
 		socket.on("fish_death", function(data) {
+			var fid = socketToFishId[socket.id];
+			if (fid !== undefined) {
+				delete fishState[fid];
+				delete socketToFishId[socket.id];
+			}
 			var name = (data.name || socket.playerName || "").trim();
 			var maxWeight = parseFloat(data.max_weight) || 0;
 			function send() {

@@ -248,6 +248,7 @@
 			this.updatePupils();
 			fP.mounth.scaleX = 2.2;
 			fP.mounth.scaleY = 1.5;
+			this._mouthOpen = true;
 		}
 	};
 
@@ -278,6 +279,7 @@
 				this.updatePupils();
 				fP.mounth.scaleX = 2.2;
 				fP.mounth.scaleY = 1.5;
+				this._mouthOpen = true;
 			}
 		} else {
 			if (intersect) {
@@ -468,12 +470,21 @@
 				this.arrowLabel.y = this.arrow.y - offset * Math.cos(ang);
 			}
 		}
-		this.fishParts.cont[0].x = pos.x;
-		this.fishParts.cont[0].y = pos.y;
+		if (!myFish || this === myFish) {
+			this.fishParts.cont[0].x = pos.x;
+			this.fishParts.cont[0].y = pos.y;
+		}
 		this.size = size;
 		this.fishParts.cont[0].scaleX = size;
 		this.fishParts.cont[0].scaleY = size;
-		this.mounth = this.fishParts.cont[0].localToLocal(0, -30, state.lakeStage);
+		if (!myFish || this === myFish) {
+			this.updateMouthFin();
+		}
+	};
+
+	Fish.prototype.updateMouthFin = function() {
+		var fP = this.fishParts;
+		this.mounth = fP.cont[0].localToLocal(0, -30, state.lakeStage);
 		this.lastfin = fP.cont[fP.nRPart - 1];
 		var d = fP.dimS[fP.nRPart - 1];
 		this.fin = this.lastfin.children[0].localToLocal(d.x / 2, d.y / 2, state.lakeStage);

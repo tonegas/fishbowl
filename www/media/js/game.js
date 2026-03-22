@@ -112,8 +112,8 @@
 		var fish = state.myFish;
 		var lake = state.lake;
 
+		fish._mouthOpen = false;
 		if (fish.update(dt, lake)) {
-			network.sendFish(socket);
 			state.lakeStage.scaleX = fish.lake_size;
 			state.lakeStage.scaleY = fish.lake_size;
 
@@ -165,9 +165,21 @@
 				if (!other) continue;
 				var root = other.fishParts && other.fishParts.cont && other.fishParts.cont[0];
 				if (root && other._lastPos && other._lastVelocity && other._lastUpdateTime !== undefined) {
-					var ext = now - other._lastUpdateTime;
-					root.x = other._lastPos.x + other._lastVelocity.x * ext;
-					root.y = other._lastPos.y + other._lastVelocity.y * ext;
+					var ext = Math.min(now - other._lastUpdateTime, 0.15);
+					var targetX = other._lastPos.x + other._lastVelocity.x * ext;
+					var targetY = other._lastPos.y + other._lastVelocity.y * ext;
+					var smooth = cfg.OTHER_FISH_SMOOTH || 0;
+					if (smooth > 0 && smooth < 1) {
+						root.x = root.x + (targetX - root.x) * smooth;
+						root.y = root.y + (targetY - root.y) * smooth;
+					} else {
+						root.x = targetX;
+						root.y = targetY;
+					}
+					other.updateMouthFin();
+				}
+				if (other.look_target && other.updatePupils) {
+					other.updatePupils();
 				}
 				if (root) {
 					var ox = root.x, oy = root.y;
@@ -220,6 +232,8 @@
 					state.lakeStage.setChildIndex(order[i], i);
 				}
 			}
+
+			network.sendFish(socket);
 
 			if (!fish.alive) {
 				handleFishDeath(socket);

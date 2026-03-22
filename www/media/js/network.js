@@ -14,9 +14,14 @@
 			if (o._lastUpdateTime !== undefined) {
 				var dt = now - o._lastUpdateTime;
 				if (dt > 0.001) {
-					o._lastVelocity = {
+					var rawV = {
 						x: (pos.x - o._lastPos.x) / dt,
 						y: (pos.y - o._lastPos.y) / dt
+					};
+					var blend = 0.5;
+					o._lastVelocity = {
+						x: (o._lastVelocity.x || 0) * (1 - blend) + rawV.x * blend,
+						y: (o._lastVelocity.y || 0) * (1 - blend) + rawV.y * blend
 					};
 				}
 			} else {
@@ -25,6 +30,12 @@
 			o._lastPos = { x: pos.x, y: pos.y };
 			o._lastUpdateTime = now;
 			o.set(data.ctp, data.pos, data.size, data.color, lake, data.name);
+			if (o.fishParts && o.fishParts.mounth) {
+				if (data.mouthOpen) { o.fishParts.mounth.scaleX = 2.2; o.fishParts.mounth.scaleY = 1.5; }
+				else { o.fishParts.mounth.scaleX = 1; o.fishParts.mounth.scaleY = 1; }
+			}
+			o.look_target = (data.lookTarget && typeof data.lookTarget.x === "number") ? { x: data.lookTarget.x, y: data.lookTarget.y } : null;
+			o.updatePupils();
 			o.setAlive(1);
 		} else {
 			lake.otherFishId.push(data.id);
@@ -34,6 +45,12 @@
 			o._lastUpdateTime = now;
 			lake.otherFish[data.id] = o;
 			o.set(data.ctp, data.pos, data.size, data.color, lake, data.name);
+			if (o.fishParts && o.fishParts.mounth) {
+				if (data.mouthOpen) { o.fishParts.mounth.scaleX = 2.2; o.fishParts.mounth.scaleY = 1.5; }
+				else { o.fishParts.mounth.scaleX = 1; o.fishParts.mounth.scaleY = 1; }
+			}
+			o.look_target = (data.lookTarget && typeof data.lookTarget.x === "number") ? { x: data.lookTarget.x, y: data.lookTarget.y } : null;
+			o.updatePupils();
 			o.setAlive(1);
 		}
 	}
@@ -58,20 +75,31 @@
 			socket.emit("register_name", { name: state.playerName });
 		};
 
-		socket.on("fish_to_client", function(data) {
+		socket.on("fish_batch", function(data) {
 			var delay = (cfg.VIRTUAL_DELAY || 0);
-			var payload = {
-				id: data.id,
-				pos: { x: data.pos.x, y: data.pos.y },
-				ctp: data.ctp ? data.ctp.slice() : [],
-				size: data.size,
-				color: data.color,
-				name: data.name
-			};
+			var fishList = data.fish || [];
+			function processAll() {
+				for (var i = 0; i < fishList.length; i++) {
+					var d = fishList[i];
+					var payload = {
+						id: d.id,
+						pos: { x: d.pos.x, y: d.pos.y },
+						ctp: d.ctp ? d.ctp.slice() : [],
+						size: d.size,
+						color: d.color,
+						name: d.name,
+						mouthOpen: d.mouthOpen === true
+					};
+					if (d.lookTarget && typeof d.lookTarget.x === "number" && typeof d.lookTarget.y === "number") {
+						payload.lookTarget = { x: d.lookTarget.x, y: d.lookTarget.y };
+					}
+					processFishToClient(payload);
+				}
+			}
 			if (delay > 0) {
-				setTimeout(function() { processFishToClient(payload); }, delay);
+				setTimeout(processAll, delay);
 			} else {
-				processFishToClient(payload);
+				processAll();
 			}
 		});
 
@@ -85,14 +113,19 @@
 		var fish = state.myFish;
 		if (!fish) return;
 		var color = createjs.Graphics.getHSL(fish.color, fish.life / fish.max_life * 200 - 100, 50);
-		socket.emit("fish_to_server", {
+		var payload = {
 			id: fish.id,
 			pos: fish.pos,
 			ctp: fish.ctp,
 			size: fish.size,
 			color: color,
-			name: state.playerName
-		});
+			name: state.playerName,
+			mouthOpen: fish._mouthOpen === true
+		};
+		if (fish.look_target && typeof fish.look_target.x === "number" && typeof fish.look_target.y === "number") {
+			payload.lookTarget = { x: fish.look_target.x, y: fish.look_target.y };
+		}
+		socket.emit("fish_to_server", payload);
 	}
 
 	function emitFishDeath(socket, maxWeight) {
