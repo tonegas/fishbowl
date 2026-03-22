@@ -132,20 +132,32 @@
 			window.FishbowlGame.onNewFish(data);
 		});
 
+		var disconnectTimeoutId = null;
 		socket.on("disconnect", function() {
-			if (state.myFish) {
-				state.myFish = null;
-				state.lake = null;
-				state.gameGeneration = (state.gameGeneration || 0) + 1;
-				var no = document.getElementById("nameOverlay");
-				var inp = document.getElementById("playerNameInput");
-				if (no && inp) {
-					no.style.display = "flex";
-					inp.value = state.playerName || "";
-					inp.focus();
-					document.getElementById("nameError").textContent = "Disconnected. Re-enter name to play.";
+			if (!state.myFish) return;
+			if (disconnectTimeoutId) return;
+			disconnectTimeoutId = setTimeout(function() {
+				disconnectTimeoutId = null;
+				if (!socket.connected && state.myFish) {
+					state.myFish = null;
+					state.lake = null;
+					state.gameGeneration = (state.gameGeneration || 0) + 1;
+					var no = document.getElementById("nameOverlay");
+					var inp = document.getElementById("playerNameInput");
+					if (no && inp) {
+						no.style.display = "flex";
+						inp.value = state.playerName || "";
+						inp.focus();
+						document.getElementById("nameError").textContent = "Disconnected. Re-enter name to play.";
+					}
+					window.FishbowlUI.hideLeaderboard();
 				}
-				window.FishbowlUI.hideLeaderboard();
+			}, 2500);
+		});
+		socket.on("connect", function() {
+			if (disconnectTimeoutId) {
+				clearTimeout(disconnectTimeoutId);
+				disconnectTimeoutId = null;
 			}
 		});
 	}
