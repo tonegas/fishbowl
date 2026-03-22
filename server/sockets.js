@@ -114,13 +114,21 @@ var socketToFishId = {};
 				x: -half + Math.random() * config.playerSpawnRange,
 				y: -half + Math.random() * config.playerSpawnRange
 			};
+			var newId = nextFishId;
+			nextFishId += 1;
 			socket.emit("new_fish_id", {
-				id: nextFishId,
+				id: newId,
 				pos: pos,
 				fobj: lakeWorld,
 				debugEnabled: config.debugEnabled === true
 			});
-			nextFishId += 1;
+			var fishList = [];
+			for (var fid in fishState) {
+				if (fishState[fid] && fid !== String(newId)) fishList.push(fishState[fid]);
+			}
+			if (fishList.length > 0) {
+				socket.emit("fish_batch", { fish: fishList });
+			}
 		});
 
 		socket.on("fish_death", function(data) {
