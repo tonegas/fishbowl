@@ -91,6 +91,7 @@ var socketToFishId = {};
 					ctp: data.ctp ? data.ctp.slice() : [],
 					size: data.size,
 					color: data.color,
+					colorHue: (typeof data.colorHue === "number" && data.colorHue >= 0 && data.colorHue <= 360) ? data.colorHue : null,
 					name: (socket.playerName || "").trim().substring(0, 12) || "Fish",
 					mouthOpen: data.mouthOpen === true
 				};
@@ -109,6 +110,11 @@ var socketToFishId = {};
 
 		socket.on("new_fish", function(data) {
 			if (!socket.playerName) return;
+			var oldFid = socketToFishId[socket.id];
+			if (oldFid !== undefined) {
+				delete fishState[oldFid];
+				delete socketToFishId[socket.id];
+			}
 			var half = config.playerSpawnRange / 2;
 			var pos = {
 				x: -half + Math.random() * config.playerSpawnRange,

@@ -4,7 +4,7 @@
 	var cfg = window.FishbowlConfig || { MOUTH_SIZE_FACTOR: 5, CHASE_DISTANCE_FACTOR: 5, FOOD_SPAWN_HALF: 400, LAKE_SIZE: 10000, FISH_INITIAL_LIFE: 180, FISH_END_LIFE: 1200, LAKE_START_SIZE: 10, FISH_START_SIZE: 0.04, FISH_END_SIZE: 2, WHOLE_FISH_SIZE_RATIO: 3, FOOD_SIZE_MIN: 0.02, FOOD_SIZE_MAX: 0.54 };
 	var state = window.Fishbowl;
 
-	function Fish(id, pos, ctp, colorStr, name) {
+	function Fish(id, pos, ctp, colorStr, name, colorHue) {
 		this.id = id;
 		this.name = name || "Fish";
 		this.start_pos = { x: pos.x, y: pos.y };
@@ -16,7 +16,8 @@
 		this.ctp = ctp;
 		this.ctv = new Array(ctp.length + 1).join("0").split("").map(parseFloat);
 		this.cta = new Array(ctp.length + 1).join("0").split("").map(parseFloat);
-		this.color = colorStr.substr(4).split(",")[0] * 1;
+		var h = (typeof colorHue === "number" && colorHue >= 0 && colorHue <= 360) ? colorHue : parseHueFromColorStr(colorStr);
+		this.color = (h !== null && !isNaN(h)) ? h : 0;
 		this.mounth = { x: 0, y: 0 };
 		this.fin = { x: 0, y: 0 };
 
@@ -424,7 +425,19 @@
 		}
 	};
 
-	Fish.prototype.set = function(ctp, pos, size, colorStr, lake, name) {
+	function parseHueFromColorStr(str) {
+		if (!str || typeof str !== "string") return null;
+		var m = str.match(/hsla?\(\s*(\d+)/);
+		if (m) return parseInt(m[1], 10);
+		/* fallback: formato "hsl(H,S,L)" come nel costruttore */
+		if (str.length > 4) {
+			var n = parseInt(str.substr(4).split(",")[0], 10);
+			if (!isNaN(n) && n >= 0 && n <= 360) return n;
+		}
+		return null;
+	}
+
+	Fish.prototype.set = function(ctp, pos, size, colorStr, lake, name, colorHue) {
 		var fP = this.fishParts;
 		var myFish = state.myFish;
 		var stage = state.stage;
@@ -432,6 +445,8 @@
 		if (myFish && this !== myFish) {
 			this._targetCtp = ctp.slice();
 			this._colorStr = colorStr;
+			var h = (typeof colorHue === "number" && colorHue >= 0 && colorHue <= 360) ? colorHue : parseHueFromColorStr(colorStr);
+			if (h !== null && !isNaN(h)) this.color = h;
 			if (!this._displayCtp) this._displayCtp = ctp.slice();
 			this.drawFish(this._displayCtp, colorStr);
 		} else {

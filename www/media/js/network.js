@@ -4,7 +4,8 @@
 	var state = window.Fishbowl;
 	var cfg = window.FishbowlConfig || { VIRTUAL_DELAY: 0 };
 
-	function processFishToClient(data) {
+	function processFishToClient(data, gen) {
+		if (gen !== undefined && gen !== state.gameGeneration) return;
 		if (!state.lake || !state.myFish || state.myFish.id === data.id) return;
 		var lake = state.lake;
 		var now = (typeof performance !== "undefined" && performance.now) ? performance.now() / 1000 : Date.now() / 1000;
@@ -29,7 +30,7 @@
 			}
 			o._lastPos = { x: pos.x, y: pos.y };
 			o._lastUpdateTime = now;
-			o.set(data.ctp, data.pos, data.size, data.color, lake, data.name);
+			o.set(data.ctp, data.pos, data.size, data.color, lake, data.name, data.colorHue);
 			if (o.fishParts && o.fishParts.mounth) {
 				if (data.mouthOpen) { o.fishParts.mounth.scaleX = 2.2; o.fishParts.mounth.scaleY = 1.5; }
 				else { o.fishParts.mounth.scaleX = 1; o.fishParts.mounth.scaleY = 1; }
@@ -39,12 +40,12 @@
 			o.setAlive(1);
 		} else {
 			lake.otherFishId.push(data.id);
-			var o = new Fish(data.id, data.pos, data.ctp, data.color, data.name || "Fish");
+			var o = new Fish(data.id, data.pos, data.ctp, data.color, data.name || "Fish", data.colorHue);
 			o._lastPos = { x: pos.x, y: pos.y };
 			o._lastVelocity = { x: 0, y: 0 };
 			o._lastUpdateTime = now;
 			lake.otherFish[data.id] = o;
-			o.set(data.ctp, data.pos, data.size, data.color, lake, data.name);
+			o.set(data.ctp, data.pos, data.size, data.color, lake, data.name, data.colorHue);
 			if (o.fishParts && o.fishParts.mounth) {
 				if (data.mouthOpen) { o.fishParts.mounth.scaleX = 2.2; o.fishParts.mounth.scaleY = 1.5; }
 				else { o.fishParts.mounth.scaleX = 1; o.fishParts.mounth.scaleY = 1; }
@@ -78,9 +79,10 @@
 		socket.on("fish_to_client", function(data) {
 			state.networkMode = "emit";
 			var delay = (cfg.VIRTUAL_DELAY || 0);
+			var gen = state.gameGeneration;
 			function process() {
 				if (data && data.id !== undefined) {
-					processFishToClient(data);
+					processFishToClient(data, gen);
 				}
 			}
 			if (delay > 0) {
@@ -94,6 +96,7 @@
 			state.networkMode = "batch";
 			var delay = (cfg.VIRTUAL_DELAY || 0);
 			var fishList = data.fish || [];
+			var gen = state.gameGeneration;
 			function processAll() {
 				for (var i = 0; i < fishList.length; i++) {
 					var d = fishList[i];
@@ -103,13 +106,14 @@
 						ctp: d.ctp ? d.ctp.slice() : [],
 						size: d.size,
 						color: d.color,
+						colorHue: (typeof d.colorHue === "number" && d.colorHue >= 0 && d.colorHue <= 360) ? d.colorHue : null,
 						name: d.name,
 						mouthOpen: d.mouthOpen === true
 					};
 					if (d.lookTarget && typeof d.lookTarget.x === "number" && typeof d.lookTarget.y === "number") {
 						payload.lookTarget = { x: d.lookTarget.x, y: d.lookTarget.y };
 					}
-					processFishToClient(payload);
+					processFishToClient(payload, gen);
 				}
 			}
 			if (delay > 0) {
@@ -123,6 +127,23 @@
 			if (state.myFish) return;
 			window.FishbowlGame.onNewFish(data);
 		});
+
+		socket.on("disconnect", function() {
+			if (state.myFish || state.playerName) {
+				state.myFish = null;
+				state.lake = null;
+				state.gameGeneration = (state.gameGeneration || 0) + 1;
+				var no = document.getElementById("nameOverlay");
+				var inp = document.getElementById("playerNameInput");
+				if (no && inp) {
+					no.style.display = "flex";
+					inp.value = state.playerName || "";
+					inp.focus();
+					document.getElementById("nameError").textContent = "Disconnected. Re-enter name to play.";
+				}
+				window.FishbowlUI.hideLeaderboard();
+			}
+		});
 	}
 
 	function sendFish(socket) {
@@ -135,6 +156,7 @@
 			ctp: fish.ctp,
 			size: fish.size,
 			color: color,
+			colorHue: fish.color,
 			name: state.playerName,
 			mouthOpen: fish._mouthOpen === true
 		};

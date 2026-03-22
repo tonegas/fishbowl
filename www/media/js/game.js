@@ -55,6 +55,7 @@
 
 	function onNewFish(data) {
 		state.debugEnabled = data.debugEnabled === true;
+		state.gameGeneration = (state.gameGeneration || 0) + 1;
 		state.stage.removeAllChildren();
 		state.lakeStage.removeAllChildren();
 		state.stage.addChild(state.lakeStage);
@@ -74,8 +75,9 @@
 			state.lakeStage.addChildAt(state.lake.fObject.list[i], 0);
 		}
 
-		var color = createjs.Graphics.getHSL(Math.ceil(Math.random() * 360), 100, 50);
-		state.myFish = new Fish(data.id, pos, [0, 0, 0, 0, 0], color, state.playerName);
+		var hue = Math.ceil(Math.random() * 360);
+		var color = createjs.Graphics.getHSL(hue, 100, 50);
+		state.myFish = new Fish(data.id, pos, [0, 0, 0, 0, 0], color, state.playerName, hue);
 
 		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
 		var foodSpawnRadius = cfg.FOOD_SPAWN_RADIUS || cfg.FOOD_SPAWN_HALF || 1000;

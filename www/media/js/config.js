@@ -75,7 +75,8 @@
 			myFish: null,
 			playerName: null,
 			loader: null,
-			debugEnabled: false
+			debugEnabled: false,
+			gameGeneration: 0
 		};
 	}
 }(typeof window !== "undefined" ? window : global));
