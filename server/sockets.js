@@ -138,25 +138,36 @@ var socketToFishId = {};
 		});
 
 		socket.on("fish_death", function(data) {
-			var fid = socketToFishId[socket.id];
-			if (fid !== undefined) {
-				delete fishState[fid];
-				delete socketToFishId[socket.id];
-				if (getFishCount() < batchFishThreshold) {
-					stopBatchTimer();
+			try {
+				var fid = socketToFishId[socket.id];
+				if (fid !== undefined) {
+					delete fishState[fid];
+					delete socketToFishId[socket.id];
+					if (getFishCount() < batchFishThreshold) {
+						stopBatchTimer();
+					}
 				}
-			}
-			var name = (data.name || socket.playerName || "").trim();
-			var maxWeight = parseFloat(data.max_weight) || 0;
-			function send() {
-				leaderboard.getTopScores(100, function(rows) {
-					socket.emit("leaderboard", rows);
-				});
-			}
-			if (name && maxWeight >= 0) {
-				leaderboard.insertScore(name, maxWeight, send);
-			} else {
-				send();
+				var name = (data.name || socket.playerName || "").trim();
+				var maxWeight = parseFloat(data.max_weight) || 0;
+				var deadSocket = socket;
+				function send() {
+					leaderboard.getTopScores(100, function(rows) {
+						try {
+							if (deadSocket && deadSocket.connected) {
+								deadSocket.emit("leaderboard", rows);
+							}
+						} catch (e) {
+							console.error("leaderboard emit error:", e);
+						}
+					});
+				}
+				if (name && maxWeight >= 0) {
+					leaderboard.insertScore(name, maxWeight, send);
+				} else {
+					send();
+				}
+			} catch (e) {
+				console.error("fish_death error:", e);
 			}
 		});
 
@@ -167,7 +178,11 @@ var socketToFishId = {};
 
 	function sendLeaderboard(sock) {
 		leaderboard.getTopScores(100, function(rows) {
-			sock.emit("leaderboard", rows);
+			try {
+				if (sock && sock.connected) sock.emit("leaderboard", rows);
+			} catch (e) {
+				console.error("sendLeaderboard emit error:", e);
+			}
 		});
 	}
 }
