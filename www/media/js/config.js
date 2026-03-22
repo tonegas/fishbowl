@@ -22,7 +22,7 @@
 		fishOtherLife: 10,
 		virtualDelay: 0,
 		batchIntervalMs: 20,
-		batchFishThreshold: 10,
+		batchFishThreshold: 4,
 		otherFishSmooth: 0.25,
 		algaeCount: 150,
 		playerSpawnRange: 100,
