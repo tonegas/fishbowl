@@ -11,7 +11,7 @@
 		foodSizeMax: 0.50,
 		mouthSizeFactor: 5,
 		chaseDistanceFactor: 100,
-		fishInitialLife: 20, //3 * 60,
+		fishInitialLife: 50, //3 * 60,
 		fishEndLife: 20 * 60,
 		fishMaxSpeed: 60,
 		fishLifeGainFromFood: 5,
