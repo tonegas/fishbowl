@@ -129,7 +129,7 @@
 		});
 
 		socket.on("disconnect", function() {
-			if (state.myFish || state.playerName) {
+			if (state.myFish) {
 				state.myFish = null;
 				state.lake = null;
 				state.gameGeneration = (state.gameGeneration || 0) + 1;
