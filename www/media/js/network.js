@@ -68,6 +68,10 @@
 		});
 
 		socket.on("leaderboard", function(rows) {
+			if (state.myFish) return;
+			var no = document.getElementById("nameOverlay");
+			if (no) no.style.display = "none";
+			document.getElementById("nameError").textContent = "";
 			window.FishbowlUI.showLeaderboard(rows);
 		});
 
