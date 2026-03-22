@@ -76,12 +76,22 @@
 		};
 
 		socket.on("fish_to_client", function(data) {
-			if (data && data.id !== undefined) {
-				processFishToClient(data);
+			state.networkMode = "emit";
+			var delay = (cfg.VIRTUAL_DELAY || 0);
+			function process() {
+				if (data && data.id !== undefined) {
+					processFishToClient(data);
+				}
+			}
+			if (delay > 0) {
+				setTimeout(process, delay);
+			} else {
+				process();
 			}
 		});
 
 		socket.on("fish_batch", function(data) {
+			state.networkMode = "batch";
 			var delay = (cfg.VIRTUAL_DELAY || 0);
 			var fishList = data.fish || [];
 			function processAll() {

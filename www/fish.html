@@ -31,6 +31,7 @@
         #tutorialOverlay .tutorial-box .key-blink-left { animation:keyblink 0.8s ease-in-out infinite; }
         #tutorialOverlay .tutorial-box .key-blink-right { animation:keyblink 0.8s ease-in-out 0.4s infinite; }
         @keyframes keyblink { 0%, 100% { opacity:1; box-shadow:0 0 8px rgba(255,255,255,0.5); } 50% { opacity:0.5; box-shadow:0 0 4px rgba(255,255,255,0.3); } }
+        #debugPanel { position:fixed; top:8px; left:8px; padding:8px 12px; background:rgba(0,0,0,0.7); border-radius:6px; color:#7f7; font:12px monospace; z-index:998; display:none; pointer-events:none; }
     </style>
     <script type="text/javascript" src="../socket.io/socket.io.js"></script>
     <script type="text/javascript" src="media/lib/jquery-2.1.0.min.js"></script>
@@ -63,6 +64,7 @@
 		<ul id="leaderboardList"></ul>
 		<button id="playAgainBtn">Play Again</button>
 	</div>
+	<div id="debugPanel"></div>
 	<div id="tutorialOverlay">
 		<div class="tutorial-box">
 			<p>Eat to survive and Avoid bigger fish.</p>

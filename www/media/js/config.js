@@ -22,10 +22,10 @@
 		fishOtherLife: 10,
 		virtualDelay: 0,
 		batchIntervalMs: 20,
-		batchFishThreshold: 20,
-		otherFishSmooth: 0.35,
+		batchFishThreshold: 10,
+		otherFishSmooth: 0.25,
 		algaeCount: 150,
-		playerSpawnRange: 1000,
+		playerSpawnRange: 100,
 		waterSurfaceLineSpacing: 100,
 		waterSurfaceLineCount: 10,
 		waterLineLengthX: 250,
@@ -35,7 +35,7 @@
 
 	if (typeof module !== "undefined" && module.exports) {
 		cfg.port = parseInt(process.argv[2], 10) || 9999;
-		cfg.cheatEnabled = process.argv.indexOf("--cheat") !== -1;
+		cfg.debugEnabled = process.argv.indexOf("--debug") !== -1;
 		module.exports = cfg;
 	}
 	if (typeof window !== "undefined") {
@@ -75,7 +75,7 @@
 			myFish: null,
 			playerName: null,
 			loader: null,
-			cheatEnabled: false
+			debugEnabled: false
 		};
 	}
 }(typeof window !== "undefined" ? window : global));

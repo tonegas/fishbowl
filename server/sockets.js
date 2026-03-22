@@ -118,7 +118,7 @@ var socketToFishId = {};
 				id: nextFishId,
 				pos: pos,
 				fobj: lakeWorld,
-				cheatEnabled: config.cheatEnabled === true
+				debugEnabled: config.debugEnabled === true
 			});
 			nextFishId += 1;
 		});

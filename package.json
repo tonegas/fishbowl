@@ -3,7 +3,7 @@
   "description": "A competitive multiplayer fish battle game",
   "scripts": {
     "start": "node fish_server.js 9999",
-    "start:cheat": "node fish_server.js 9999 --cheat"
+    "start:debug": "node fish_server.js 9999 --debug"
   },
   "dependencies": {
     "socket.io": "^4.8.3",

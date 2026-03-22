@@ -429,7 +429,14 @@
 		var myFish = state.myFish;
 		var stage = state.stage;
 		if (name !== undefined) this.name = name || "Fish";
-		this.drawFish(ctp, colorStr);
+		if (myFish && this !== myFish) {
+			this._targetCtp = ctp.slice();
+			this._colorStr = colorStr;
+			if (!this._displayCtp) this._displayCtp = ctp.slice();
+			this.drawFish(this._displayCtp, colorStr);
+		} else {
+			this.drawFish(ctp, colorStr);
+		}
 		if (myFish && this !== myFish) {
 			if (ctp.length === 0) {
 				this.die();

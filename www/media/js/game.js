@@ -8,6 +8,7 @@
 
 	var key = new Kibo();
 	var timePrev;
+	var debugDelaySamples = [];
 
 	function drawInitialBackground() {
 		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
@@ -53,7 +54,7 @@
 	}
 
 	function onNewFish(data) {
-		state.cheatEnabled = data.cheatEnabled === true;
+		state.debugEnabled = data.debugEnabled === true;
 		state.stage.removeAllChildren();
 		state.lakeStage.removeAllChildren();
 		state.stage.addChild(state.lakeStage);
@@ -104,6 +105,10 @@
 		if (!state.myFish || dt >= 0.1) {
 			if (!state.myFish && state.bg) {
 				drawInitialBackground();
+			}
+			if (state.debugEnabled && !state.myFish) {
+				debugDelaySamples = [];
+				ui.updateDebugPanel(undefined, 0);
 			}
 			state.stage.update(event);
 			return;
@@ -178,6 +183,26 @@
 					}
 					other.updateMouthFin();
 				}
+				if (other._displayCtp && other._targetCtp && other._colorStr) {
+					var ctpSmooth = cfg.OTHER_FISH_SMOOTH || 0;
+					var tc = other._targetCtp;
+					var dc = other._displayCtp;
+					if (tc.length !== dc.length) {
+						other._displayCtp = tc.slice();
+					} else {
+						for (var ci = 0; ci < tc.length; ci++) {
+							var diff = tc[ci] - dc[ci];
+							while (diff > Math.PI) diff -= 2 * Math.PI;
+							while (diff < -Math.PI) diff += 2 * Math.PI;
+							if (ctpSmooth > 0 && ctpSmooth < 1) {
+								dc[ci] = dc[ci] + diff * ctpSmooth;
+							} else {
+								dc[ci] = tc[ci];
+							}
+						}
+					}
+					other.drawFish(other._displayCtp, other._colorStr);
+				}
 				if (other.look_target && other.updatePupils) {
 					other.updatePupils();
 				}
@@ -195,6 +220,31 @@
 				lake.otherFish[toRemove[k]] = null;
 			}
 			lake.otherFishId = _.difference(lake.otherFishId, toRemove);
+
+			if (state.debugEnabled) {
+				var delaySum = 0;
+				var delayCount = 0;
+				for (var di = 0; di < lake.otherFishId.length; di++) {
+					var oth = lake.otherFish[lake.otherFishId[di]];
+					if (oth && oth._lastUpdateTime !== undefined) {
+						delaySum += (now - oth._lastUpdateTime) * 1000;
+						delayCount++;
+					}
+				}
+				var instantAvg = delayCount > 0 ? delaySum / delayCount : 0;
+				debugDelaySamples.push({ t: now, v: instantAvg });
+				var cutoff = now - 1;
+				while (debugDelaySamples.length > 0 && debugDelaySamples[0].t < cutoff) {
+					debugDelaySamples.shift();
+				}
+				var sum1s = 0;
+				for (var si = 0; si < debugDelaySamples.length; si++) sum1s += debugDelaySamples[si].v;
+				var avg1s = debugDelaySamples.length > 0 ? sum1s / debugDelaySamples.length : instantAvg;
+				ui.updateDebugPanel(delayCount > 0 ? avg1s : 0, delayCount, state.networkMode);
+			} else {
+				debugDelaySamples = [];
+				ui.updateDebugPanel(undefined, 0);
+			}
 
 			/* Z-order: più grande = davanti (setChildIndex, sortChildren non in CreateJS 2013) */
 			var sortable = [];
@@ -277,7 +327,7 @@
 		key.down("right", function() { onMoveKey(); if (state.myFish) state.myFish.right = true; return false; });
 		key.up("right", function() { if (state.myFish) state.myFish.right = false; return false; });
 		key.down("q", function() {
-			if (state.cheatEnabled && state.myFish) {
+			if (state.debugEnabled && state.myFish) {
 				state.myFish.life = Math.min(state.myFish.life + 30, state.myFish.max_life);
 				state.myFish.size_time += 10;
 				state.myFish.size_time = Math.min(state.myFish.size_time, cfg.FISH_END_LIFE);
@@ -285,7 +335,7 @@
 			return false;
 		});
 		key.down("w", function() {
-			if (state.cheatEnabled && state.myFish) {
+			if (state.debugEnabled && state.myFish) {
 				state.myFish.size_time = Math.max(0, state.myFish.size_time - 10);
 			}
 			return false;

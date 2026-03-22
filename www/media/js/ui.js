@@ -90,6 +90,18 @@
 		el.style.opacity = "";
 	}
 
+	function updateDebugPanel(avgDelayMs, fishCount, networkMode) {
+		var el = document.getElementById("debugPanel");
+		if (!el) return;
+		if (avgDelayMs === undefined || fishCount === 0) {
+			el.style.display = "none";
+			return;
+		}
+		var modeStr = (networkMode === "batch") ? "batch" : "emit";
+		el.textContent = "Debug | Ritardo medio: " + avgDelayMs.toFixed(1) + " ms | n=" + fishCount + " | " + modeStr;
+		el.style.display = "block";
+	}
+
 	function hideTutorial() {
 		var el = document.getElementById("tutorialOverlay");
 		el.classList.remove("visible");
@@ -126,6 +138,7 @@
 		initNameOverlay: initNameOverlay,
 		showTutorial: showTutorial,
 		hideTutorial: hideTutorial,
+		updateDebugPanel: updateDebugPanel,
 		formatWeight: formatWeight
 	};
 }(window));

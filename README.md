@@ -18,60 +18,27 @@ npm install
 
 ```bash
 node fish_server.js 9999
-```
-
-The server listens on port **9999** (or the port passed as argument). Config is loaded from `www/media/js/config.js`.
-
-### Cheat mode (crescere con tasto Q)
-
-Per abilitare il cheat che permette di far crescere il pesce premendo **Q** (vita +30, dimensione +10):
-
-```bash
-node fish_server.js 9999 --cheat
-# oppure
-npm run start:cheat
-```
-
-Il cheat è **disabilitato di default** (`false`).
-
-## Server deployment (PM2)
-
-For production, use [PM2](https://pm2.keymetrics.io/) to keep the process running:
-
-```bash
-# Start
-pm2 start fish_server.js --name fishbowl -- 9999
-
-# Restart after code changes (PM2 does NOT auto-restart on file edit)
-pm2 restart fishbowl
-
-# Zero-downtime reload
-pm2 reload fishbowl
-
-# Optional: watch mode (auto-restart on file changes)
-pm2 start fish_server.js --name fishbowl --watch --ignore-watch="node_modules" -- 9999
-
-# Persist across reboots
-pm2 save
-pm2 startup
-```
-
-### Verify the server is running
-
-```bash
-# Check process on port 9999
-lsof -i :9999
 # or
-ss -tlnp | grep 9999
-
-# PM2 status
-pm2 list
-pm2 logs fishbowl
+npm start
 ```
 
-### Nginx
+The server listens on port **9999** (or the port passed as argument). Configuration is loaded from `www/media/js/config.js`.
 
-See `nginx-fishbowl.conf` for reverse proxy setup. The app must listen on `127.0.0.1:9999`.
+### Debug mode
+
+With `--debug` you enable debug mode:
+
+- **Q** — life +30, size +10
+- **W** — size −10
+- **Debug panel** (top-left) — average reception delay of other fish (ms, 1-second rolling average), fish count, network mode (emit/batch)
+
+```bash
+node fish_server.js 9999 --debug
+# or
+npm run start:debug
+```
+
+Debug mode is **disabled by default**.
 
 ## How to play
 
@@ -88,39 +55,6 @@ See `nginx-fishbowl.conf` for reverse proxy setup. The app must listen on `127.0
 
 A tutorial overlay appears at game start and disappears when you press any movement key.
 
-## Project structure
-
-```
-fishbowl/
-├── fish_server.js         # Node.js server (HTTP + Socket.IO)
-├── package.json
-├── fish_leaderboard.db    # Leaderboard database (created on first run)
-├── server/
-│   ├── http.js            # Static file server
-│   ├── sockets.js         # Socket.IO handlers
-│   ├── leaderboard.js     # SQLite leaderboard
-│   └── lake.js            # Lake and algae generation
-└── www/
-    ├── fish.html          # Main game page
-    └── media/
-        ├── js/
-        │   ├── config.js       # Shared config (client + server)
-        │   ├── main.js         # Entry point
-        │   ├── game.js         # Game loop, keyboard
-        │   ├── network.js      # Socket.IO client
-        │   ├── ui.js           # Overlays (name, tutorial, leaderboard)
-        │   ├── socket.js       # Socket setup
-        │   └── entities/
-        │       ├── fish.js     # Player and other fish
-        │       ├── food.js     # Floating food
-        │       ├── algae.js    # Lake decoration
-        │       ├── lake.js     # Lake container
-        │       ├── lakeBorder.js   # Lake glass border
-        │       └── waterSurface.js # Animated waves
-        ├── lib/            # jQuery, CreateJS, Lodash, Kibo
-        └── image/          # Sprites (algae SVGs)
-```
-
 ## Configuration
 
 Main parameters in `www/media/js/config.js`:
@@ -129,11 +63,107 @@ Main parameters in `www/media/js/config.js`:
 |-----------|-------------|---------|
 | `lakeSize` | Lake dimensions (world units) | 10000 |
 | `foodCount` | Number of food items | 1000 |
-| `foodSpawnRadius` | Spawn radius around player; food wraps when too far | 1000 |
+| `foodSpawnRadius` | Spawn radius around player | 500 |
 | `algaeCount` | Number of algae | 150 |
-| `playerSpawnRange` | Initial spawn area (centered) | 9000 |
+| `playerSpawnRange` | Initial spawn area (centered) | 100 |
 | `fishInitialLife` | Starting life (seconds) | 180 |
 | `fishEndLife` | Time to reach max size (seconds) | 1200 |
+| `batchIntervalMs` | Batch broadcast interval (ms), when in batch mode | 20 |
+| `batchFishThreshold` | Fish count above which batch mode is used (< N = emit, ≥ N = batch) | 10 |
+| `otherFishSmooth` | Smoothing factor for other fish position and orientation (0 = no smooth, 0.3 = moderate) | 0.25 |
+| `virtualDelay` | Artificial delay (ms) for received updates (for testing) | 0 |
+
+## Network modes
+
+- **Emit** (few fish): each `fish_to_server` triggers an immediate `fish_to_client` broadcast. Lower latency.
+- **Batch** (many fish): server collects state and sends `fish_batch` every `batchIntervalMs`. Fewer messages, fixed latency.
+
+The mode switches automatically based on `batchFishThreshold`.
+
+## Server deployment (PM2)
+
+For production, use [PM2](https://pm2.keymetrics.io/):
+
+```bash
+# Start
+pm2 start fish_server.js --name fishbowl -- 9999
+
+# Restart after code changes
+pm2 restart fishbowl
+
+# Zero-downtime reload
+pm2 reload fishbowl
+
+# Optional: watch mode (auto-restart on file changes)
+pm2 start fish_server.js --name fishbowl --watch --ignore-watch="node_modules" -- 9999
+
+# Persist across reboots
+pm2 save
+pm2 startup
+```
+
+### Verify the server is running
+
+```bash
+lsof -i :9999
+# or
+ss -tlnp | grep 9999
+
+pm2 list
+pm2 logs fishbowl
+```
+
+### Nginx
+
+See `nginx-fishbowl.conf` for reverse proxy setup. The app must listen on `127.0.0.1:9999`.
+
+## Project structure
+
+```
+fishbowl/
+├── fish_server.js           # Node.js server (HTTP + Socket.IO)
+├── package.json
+├── fish_leaderboard.db      # Leaderboard database (created on first run)
+├── server/
+│   ├── http.js              # Static file server
+│   ├── sockets.js           # Socket.IO handlers (fish state, batch/emit)
+│   ├── leaderboard.js       # SQLite leaderboard
+│   └── lake.js              # Lake and algae generation
+└── www/
+    ├── fish.html            # Main game page
+    └── media/
+        ├── js/
+        │   ├── config.js    # Shared config (client + server)
+        │   ├── main.js      # Entry point
+        │   ├── game.js      # Game loop, keyboard, other fish extrapolation
+        │   ├── network.js   # Socket.IO client (fish_to_server, fish_to_client, fish_batch)
+        │   ├── ui.js        # Overlays (name, tutorial, leaderboard, debug)
+        │   ├── socket.js    # Socket setup
+        │   └── entities/
+        │       ├── fish.js  # Player and other fish
+        │       ├── food.js  # Floating food
+        │       ├── algae.js # Lake decoration
+        │       ├── lake.js  # Lake container
+        │       ├── lakeBorder.js    # Lake glass border
+        │       └── waterSurface.js  # Animated waves
+        ├── lib/             # jQuery, CreateJS, Lodash, Kibo
+        └── image/           # Sprites (algae SVGs)
+```
+
+## Socket.IO events
+
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `register_name` | Client → Server | Register player name |
+| `name_accepted` / `name_rejected` | Server → Client | Name validation |
+| `new_fish` | Client → Server | Request to join the game |
+| `new_fish_id` | Server → Client | Spawn data (position, lake with algae) |
+| `fish_to_server` | Client → Server | Player fish state (pos, ctp, size, etc.) |
+| `fish_to_client` | Server → Client | Single fish state (emit mode, < threshold) |
+| `fish_batch` | Server → Client | All fish state (batch mode, ≥ threshold) |
+| `fish_death` | Client → Server | Death and leaderboard update |
+| `leaderboard_request` | Client → Server | Request leaderboard |
+| `leaderboard` | Server → Client | Leaderboard rows |
 
 ## Technologies
 
@@ -145,18 +175,9 @@ Main parameters in `www/media/js/config.js`:
 | Frontend | HTML5 Canvas, CreateJS (EaselJS) |
 | Libraries | jQuery, Lodash, Kibo (keyboard) |
 
-## Socket.IO events
-
-- `register_name` — Register player name
-- `name_accepted` / `name_rejected` — Name validation
-- `new_fish` — Request to join the game
-- `new_fish_id` — Spawn data (position, lake with algae)
-- `fish_to_server` / `fish_to_client` — Position sync
-- `fish_death` — Death and leaderboard update
-- `leaderboard_request` — Request leaderboard
-
 ## Notes
 
-- The `fish_leaderboard.db` database is created automatically in the project folder
-- Algae dimensions are read from SVG files at server startup
-- Food spawns around the player and repositions when it drifts beyond `foodSpawnRadius`
+- The `fish_leaderboard.db` database is created automatically in the project folder.
+- Algae dimensions are read from SVG files at server startup.
+- Food spawns around the player and repositions when it drifts beyond `foodSpawnRadius`.
+- Other fish positions and orientations are extrapolated and smoothed between network updates.
