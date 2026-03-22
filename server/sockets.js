@@ -8,12 +8,15 @@ var nextFishId = 1;
 var fishState = {};
 var socketToFishId = {};
 
-function setupSockets(io, config) {
+	function setupSockets(io, config) {
 	var lakeWorld = lake.createLake(config);
 	var batchIntervalMs = config.batchIntervalMs || 50;
+	var batchFishThreshold = config.batchFishThreshold || 20;
 	var batchTimer = null;
 
 	function broadcastFishBatch() {
+		var fishCount = Object.keys(fishState).filter(function(fid) { return fishState[fid]; }).length;
+		if (fishCount < batchFishThreshold) return;
 		var fishList = [];
 		for (var fid in fishState) {
 			if (fishState[fid]) fishList.push(fishState[fid]);
@@ -34,6 +37,10 @@ function setupSockets(io, config) {
 			clearInterval(batchTimer);
 			batchTimer = null;
 		}
+	}
+
+	function getFishCount() {
+		return Object.keys(fishState).filter(function(fid) { return fishState[fid]; }).length;
 	}
 
 	io.on("connection", function(socket) {
@@ -65,7 +72,7 @@ function setupSockets(io, config) {
 				delete fishState[fid];
 				delete socketToFishId[socket.id];
 			}
-			if (Object.keys(fishState).length === 0) {
+			if (getFishCount() < batchFishThreshold) {
 				stopBatchTimer();
 			}
 		});
@@ -91,7 +98,12 @@ function setupSockets(io, config) {
 					state.lookTarget = { x: data.lookTarget.x, y: data.lookTarget.y };
 				}
 				fishState[fid] = state;
-				startBatchTimer();
+				var fishCount = getFishCount();
+				if (fishCount >= batchFishThreshold) {
+					startBatchTimer();
+				} else {
+					io.sockets.emit("fish_to_client", state);
+				}
 			}
 		});
 
@@ -116,6 +128,9 @@ function setupSockets(io, config) {
 			if (fid !== undefined) {
 				delete fishState[fid];
 				delete socketToFishId[socket.id];
+				if (getFishCount() < batchFishThreshold) {
+					stopBatchTimer();
+				}
 			}
 			var name = (data.name || socket.playerName || "").trim();
 			var maxWeight = parseFloat(data.max_weight) || 0;

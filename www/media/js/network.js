@@ -75,6 +75,12 @@
 			socket.emit("register_name", { name: state.playerName });
 		};
 
+		socket.on("fish_to_client", function(data) {
+			if (data && data.id !== undefined) {
+				processFishToClient(data);
+			}
+		});
+
 		socket.on("fish_batch", function(data) {
 			var delay = (cfg.VIRTUAL_DELAY || 0);
 			var fishList = data.fish || [];
