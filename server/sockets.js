@@ -43,6 +43,11 @@ function setupSockets(io, config) {
 		return Object.keys(fishState).filter(function(fid) { return fishState[fid]; }).length;
 	}
 
+	function broadcastFishLeft(fishId) {
+		if (fishId === undefined || fishId === null) return;
+		io.sockets.emit("fish_left", { id: fishId });
+	}
+
 	io.on("connection", function(socket) {
 		socket.playerName = null;
 
@@ -71,6 +76,7 @@ function setupSockets(io, config) {
 			if (fid !== undefined) {
 				delete fishState[fid];
 				delete socketToFishId[socket.id];
+				broadcastFishLeft(fid);
 			}
 			if (getFishCount() < batchFishThreshold) {
 				stopBatchTimer();
@@ -114,6 +120,7 @@ function setupSockets(io, config) {
 			if (oldFid !== undefined) {
 				delete fishState[oldFid];
 				delete socketToFishId[socket.id];
+				broadcastFishLeft(oldFid);
 			}
 			var half = config.playerSpawnRange / 2;
 			var pos = {
@@ -143,11 +150,18 @@ function setupSockets(io, config) {
 				if (fid !== undefined) {
 					delete fishState[fid];
 					delete socketToFishId[socket.id];
+					broadcastFishLeft(fid);
 					if (getFishCount() < batchFishThreshold) {
 						stopBatchTimer();
 					}
 				}
-				var name = (data.name || socket.playerName || "").trim();
+				var name = (data.name || socket.playerName || "").trim().substring(0, 12);
+				if (name) {
+					var nk = name.toLowerCase();
+					usedNames[nk] = socket.id;
+					socket.playerName = name;
+				}
+				var nameForLb = name || (socket.playerName || "").trim().substring(0, 12);
 				var maxWeight = parseFloat(data.max_weight) || 0;
 				var deadSocket = socket;
 				function send() {
@@ -161,8 +175,8 @@ function setupSockets(io, config) {
 						}
 					});
 				}
-				if (name && maxWeight >= 0) {
-					leaderboard.insertScore(name, maxWeight, send);
+				if (nameForLb && maxWeight >= 0) {
+					leaderboard.insertScore(nameForLb, maxWeight, send);
 				} else {
 					send();
 				}

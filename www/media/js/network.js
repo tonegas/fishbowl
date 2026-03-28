@@ -4,6 +4,21 @@
 	var state = window.Fishbowl;
 	var cfg = window.FishbowlConfig || { VIRTUAL_DELAY: 0 };
 
+	function removeOtherFishById(fishId) {
+		if (fishId === undefined || fishId === null || !state.lake) return;
+		if (state.myFish && state.myFish.id === fishId) return;
+		var lake = state.lake;
+		var o = lake.otherFish[fishId];
+		if (o) {
+			try {
+				o.die();
+			} catch (e) { /* ignore */ }
+			delete lake.otherFish[fishId];
+		}
+		var sid = String(fishId);
+		lake.otherFishId = lake.otherFishId.filter(function(id) { return String(id) !== sid; });
+	}
+
 	function processFishToClient(data, gen) {
 		if (gen !== undefined && gen !== state.gameGeneration) return;
 		if (!state.lake || !state.myFish || state.myFish.id === data.id) return;
@@ -125,6 +140,11 @@
 			} else {
 				processAll();
 			}
+		});
+
+		socket.on("fish_left", function(data) {
+			if (!data || data.id === undefined) return;
+			removeOtherFishById(data.id);
 		});
 
 		socket.on("new_fish_id", function(data) {
