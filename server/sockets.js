@@ -129,19 +129,20 @@ function setupSockets(io, config) {
 			};
 			var newId = nextFishId;
 			nextFishId += 1;
-			socket.emit("new_fish_id", {
-				id: newId,
-				pos: pos,
-				fobj: lakeWorld,
-				debugEnabled: config.debugEnabled === true
-			});
 			var fishList = [];
 			for (var fid in fishState) {
 				if (fishState[fid] && fid !== String(newId)) fishList.push(fishState[fid]);
 			}
+			var payload = {
+				id: newId,
+				pos: pos,
+				fobj: lakeWorld,
+				debugEnabled: config.debugEnabled === true
+			};
 			if (fishList.length > 0) {
-				socket.emit("fish_batch", { fish: fishList });
+				payload.otherFish = fishList;
 			}
+			socket.emit("new_fish_id", payload);
 		});
 
 		socket.on("fish_death", function(data) {

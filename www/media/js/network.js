@@ -71,6 +71,29 @@
 		}
 	}
 
+	function applyOtherFishFromNewFishPayload(fishList) {
+		if (!fishList || !fishList.length || !state.lake || !state.myFish) return;
+		var gen = state.gameGeneration;
+		for (var i = 0; i < fishList.length; i++) {
+			var d = fishList[i];
+			if (!d || d.id === undefined) continue;
+			var payload = {
+				id: d.id,
+				pos: { x: d.pos.x, y: d.pos.y },
+				ctp: d.ctp ? d.ctp.slice() : [],
+				size: d.size,
+				color: d.color,
+				colorHue: (typeof d.colorHue === "number" && d.colorHue >= 0 && d.colorHue <= 360) ? d.colorHue : null,
+				name: d.name,
+				mouthOpen: d.mouthOpen === true
+			};
+			if (d.lookTarget && typeof d.lookTarget.x === "number" && typeof d.lookTarget.y === "number") {
+				payload.lookTarget = { x: d.lookTarget.x, y: d.lookTarget.y };
+			}
+			processFishToClient(payload, gen);
+		}
+	}
+
 	function setup(socket) {
 		socket.on("name_rejected", function() {
 			document.getElementById("nameError").textContent = "Name already taken";
@@ -150,6 +173,9 @@
 		socket.on("new_fish_id", function(data) {
 			if (state.myFish) return;
 			window.FishbowlGame.onNewFish(data);
+			if (data.otherFish && data.otherFish.length) {
+				applyOtherFishFromNewFishPayload(data.otherFish);
+			}
 		});
 
 		var disconnectTimeoutId = null;
