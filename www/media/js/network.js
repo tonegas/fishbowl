@@ -3,6 +3,14 @@
 (function (window) {
 	var state = window.Fishbowl;
 	var cfg = window.FishbowlConfig || { VIRTUAL_DELAY: 0 };
+	var pendingOtherFishSnapshot = null;
+
+	function flushPendingOtherFishSnapshot() {
+		if (!pendingOtherFishSnapshot || !pendingOtherFishSnapshot.length) return;
+		var list = pendingOtherFishSnapshot;
+		pendingOtherFishSnapshot = null;
+		applyOtherFishFromNewFishPayload(list);
+	}
 
 	function removeOtherFishById(fishId) {
 		if (fishId === undefined || fishId === null || !state.lake) return;
@@ -170,9 +178,20 @@
 			removeOtherFishById(data.id);
 		});
 
+		socket.on("other_fish_snapshot", function(data) {
+			var fish = data && data.fish;
+			if (!fish || !fish.length) return;
+			if (state.myFish && state.lake) {
+				applyOtherFishFromNewFishPayload(fish);
+			} else {
+				pendingOtherFishSnapshot = fish;
+			}
+		});
+
 		socket.on("new_fish_id", function(data) {
 			if (state.myFish) return;
 			window.FishbowlGame.onNewFish(data);
+			flushPendingOtherFishSnapshot();
 			if (data.otherFish && data.otherFish.length) {
 				applyOtherFishFromNewFishPayload(data.otherFish);
 			}

@@ -133,16 +133,15 @@ function setupSockets(io, config) {
 			for (var fid in fishState) {
 				if (fishState[fid] && fid !== String(newId)) fishList.push(fishState[fid]);
 			}
-			var payload = {
+			socket.emit("new_fish_id", {
 				id: newId,
 				pos: pos,
 				fobj: lakeWorld,
 				debugEnabled: config.debugEnabled === true
-			};
+			});
 			if (fishList.length > 0) {
-				payload.otherFish = fishList;
+				socket.emit("other_fish_snapshot", { fish: fishList });
 			}
-			socket.emit("new_fish_id", payload);
 		});
 
 		socket.on("fish_death", function(data) {
