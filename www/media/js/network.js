@@ -4,6 +4,39 @@
 	var state = window.Fishbowl;
 	var cfg = window.FishbowlConfig || { VIRTUAL_DELAY: 0 };
 	var pendingOtherFishSnapshot = null;
+	var pendingOtherFishSnapshotMerge = null;
+
+	function resetOtherFishSnapshotMerge() {
+		pendingOtherFishSnapshotMerge = null;
+	}
+
+	function mergeOtherFishSnapshotChunks(data) {
+		var fish = data && data.fish;
+		if (!fish || !fish.length) return { complete: false, list: null };
+		var parts = data.parts;
+		if (!parts || parts <= 1) return { complete: true, list: fish };
+		var partIdx = data.part;
+		if (typeof partIdx !== "number" || partIdx < 0 || partIdx >= parts) {
+			pendingOtherFishSnapshotMerge = null;
+			return { complete: false, list: null };
+		}
+		if (!pendingOtherFishSnapshotMerge || pendingOtherFishSnapshotMerge.n !== parts) {
+			pendingOtherFishSnapshotMerge = { n: parts, byPart: {} };
+		}
+		pendingOtherFishSnapshotMerge.byPart[partIdx] = fish;
+		var m = pendingOtherFishSnapshotMerge;
+		for (var p = 0; p < m.n; p++) {
+			if (!Object.prototype.hasOwnProperty.call(m.byPart, p)) {
+				return { complete: false, list: null };
+			}
+		}
+		var merged = [];
+		for (p = 0; p < m.n; p++) {
+			merged = merged.concat(m.byPart[p]);
+		}
+		pendingOtherFishSnapshotMerge = null;
+		return { complete: true, list: merged };
+	}
 
 	function flushPendingOtherFishSnapshot() {
 		if (!pendingOtherFishSnapshot || !pendingOtherFishSnapshot.length) return;
@@ -179,7 +212,9 @@
 		});
 
 		socket.on("other_fish_snapshot", function(data) {
-			var fish = data && data.fish;
+			var snap = mergeOtherFishSnapshotChunks(data);
+			if (!snap.complete) return;
+			var fish = snap.list;
 			if (!fish || !fish.length) return;
 			if (state.myFish && state.lake) {
 				applyOtherFishFromNewFishPayload(fish);
@@ -189,7 +224,7 @@
 		});
 
 		socket.on("new_fish_id", function(data) {
-			if (state.myFish) return;
+			resetOtherFishSnapshotMerge();
 			window.FishbowlGame.onNewFish(data);
 			flushPendingOtherFishSnapshot();
 			if (data.otherFish && data.otherFish.length) {

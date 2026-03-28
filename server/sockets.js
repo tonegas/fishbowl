@@ -140,7 +140,20 @@ function setupSockets(io, config) {
 				debugEnabled: config.debugEnabled === true
 			});
 			if (fishList.length > 0) {
-				socket.emit("other_fish_snapshot", { fish: fishList });
+				var snapshotChunk = config.otherFishSnapshotChunk || 18;
+				if (fishList.length <= snapshotChunk) {
+					socket.emit("other_fish_snapshot", { fish: fishList });
+				} else {
+					var partCount = Math.ceil(fishList.length / snapshotChunk);
+					for (var pi = 0; pi < partCount; pi++) {
+						var from = pi * snapshotChunk;
+						socket.emit("other_fish_snapshot", {
+							fish: fishList.slice(from, from + snapshotChunk),
+							part: pi,
+							parts: partCount
+						});
+					}
+				}
 			}
 		});
 
