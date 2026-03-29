@@ -21,7 +21,7 @@
 			document.getElementById("leaderboardOverlay").style.display = "flex";
 			return;
 		}
-		var playerName = (state.playerName || "").trim().toLowerCase();
+		var playerName = (state.playerName || state.lastLeaderboardName || "").trim().toLowerCase();
 		var playerIndex = -1;
 		for (var i = 0; i < rows.length; i++) {
 			if ((rows[i].name || "").toLowerCase() === playerName) {

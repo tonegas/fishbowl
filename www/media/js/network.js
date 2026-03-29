@@ -111,7 +111,15 @@
 
 		document.getElementById("playAgainBtn").onclick = function() {
 			window.FishbowlUI.hideLeaderboard();
-			socket.emit("register_name", { name: state.playerName });
+			var no = document.getElementById("nameOverlay");
+			var inp = document.getElementById("playerNameInput");
+			var err = document.getElementById("nameError");
+			if (inp) {
+				inp.value = "";
+				inp.focus();
+			}
+			if (err) err.textContent = "";
+			if (no) no.style.display = "flex";
 		};
 
 		socket.on("fish_to_client", function(data) {

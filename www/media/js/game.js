@@ -302,13 +302,15 @@
 		network.sendFish(socket);
 		var maxWeight = fish.max_weight || 0;
 		fish.die();
+		state.lastLeaderboardName = state.playerName;
+		ui.showLeaderboardLoading();
+		network.emitFishDeath(socket, maxWeight);
+		state.playerName = null;
 		state.myFish = null;
 		state.lake.x = 0;
 		state.lake.y = 0;
 		state.lake.vx = 0;
 		state.lake.vy = 0;
-		ui.showLeaderboardLoading();
-		network.emitFishDeath(socket, maxWeight);
 		setTimeout(function() {
 			socket.emit("leaderboard_request");
 		}, 200);

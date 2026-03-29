@@ -156,13 +156,14 @@ function setupSockets(io, config) {
 					}
 					emitFullSyncToAll();
 				}
-				var name = (data.name || socket.playerName || "").trim().substring(0, 12);
-				if (name) {
-					var nk = name.toLowerCase();
-					usedNames[nk] = socket.id;
-					socket.playerName = name;
+				var nameForLb = (data.name || socket.playerName || "").trim().substring(0, 12);
+				if (socket.playerName) {
+					var keyRelease = socket.playerName.toLowerCase();
+					if (usedNames[keyRelease] === socket.id) {
+						delete usedNames[keyRelease];
+					}
 				}
-				var nameForLb = name || (socket.playerName || "").trim().substring(0, 12);
+				socket.playerName = null;
 				var maxWeight = parseFloat(data.max_weight) || 0;
 				var deadSocket = socket;
 				function send() {

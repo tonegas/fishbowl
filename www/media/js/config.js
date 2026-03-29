@@ -76,6 +76,7 @@
 			lake: null,
 			myFish: null,
 			playerName: null,
+			lastLeaderboardName: null,
 			loader: null,
 			debugEnabled: false,
 			gameGeneration: 0
