@@ -96,6 +96,7 @@
 		state.lakeStage.addChild(state.lakeBorder.shape);
 		state.lakeStage.addChildAt(state.lakeBorder.innerLineShape, 0);
 		state.stage.addChildAt(state.bg, 0);
+		state.localPlayActive = false;
 		ui.showTutorial();
 	}
 
@@ -119,8 +120,10 @@
 		var fish = state.myFish;
 		var lake = state.lake;
 
+		var simDt = state.localPlayActive ? dt : 0;
+
 		fish._mouthOpen = false;
-		if (fish.update(dt, lake)) {
+		if (fish.update(simDt, lake)) {
 			state.lakeStage.scaleX = fish.lake_size;
 			state.lakeStage.scaleY = fish.lake_size;
 
@@ -158,7 +161,9 @@
 				} else {
 					obj.update(event, lake.x, lake.y);
 					obj.visible = (obj.x >= vxMin && obj.x <= vxMax && obj.y >= vyMin && obj.y <= vyMax);
-					fish.eat(obj);
+					if (state.localPlayActive) {
+						fish.eat(obj);
+					}
 				}
 			});
 			if (foodToRemove.length) {
@@ -212,8 +217,10 @@
 					var ox = root.x, oy = root.y;
 					root.visible = (ox >= vxMin && ox <= vxMax && oy >= vyMin && oy <= vyMax);
 				}
-				fish.bite(fish, other);
-				if (other.alive) fish.bite(other, fish);
+				if (state.localPlayActive) {
+					fish.bite(fish, other);
+					if (other.alive) fish.bite(other, fish);
+				}
 				if (other.setAlive(-dt) === false) {
 					toRemove.push(lake.otherFishId[i]);
 				}
@@ -285,7 +292,9 @@
 				}
 			}
 
-			network.sendFish(socket);
+			if (state.localPlayActive) {
+				network.sendFish(socket);
+			}
 
 			if (!fish.alive) {
 				handleFishDeath(socket);
@@ -320,6 +329,7 @@
 		function onMoveKey() {
 			if (document.getElementById("tutorialOverlay").classList.contains("visible")) {
 				ui.hideTutorial();
+				state.localPlayActive = true;
 			}
 		}
 		key.down("up", function() { onMoveKey(); if (state.myFish) state.myFish.up = true; return false; });

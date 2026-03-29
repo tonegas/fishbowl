@@ -79,7 +79,8 @@
 			lastLeaderboardName: null,
 			loader: null,
 			debugEnabled: false,
-			gameGeneration: 0
+			gameGeneration: 0,
+			localPlayActive: false
 		};
 	}
 }(typeof window !== "undefined" ? window : global));
