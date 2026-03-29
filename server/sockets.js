@@ -14,13 +14,18 @@ function setupSockets(io, config) {
 	var batchFishThreshold = config.batchFishThreshold || 20;
 	var batchTimer = null;
 
-	function broadcastFishBatch() {
-		var fishCount = Object.keys(fishState).filter(function(fid) { return fishState[fid]; }).length;
-		if (fishCount < batchFishThreshold) return;
+	function buildFishList() {
 		var fishList = [];
 		for (var fid in fishState) {
 			if (fishState[fid]) fishList.push(fishState[fid]);
 		}
+		return fishList;
+	}
+
+	function broadcastFishBatch() {
+		var fishCount = Object.keys(fishState).filter(function(fid) { return fishState[fid]; }).length;
+		if (fishCount < batchFishThreshold) return;
+		var fishList = buildFishList();
 		if (fishList.length > 0) {
 			io.sockets.emit("fish_batch", { fish: fishList });
 		}
@@ -43,9 +48,9 @@ function setupSockets(io, config) {
 		return Object.keys(fishState).filter(function(fid) { return fishState[fid]; }).length;
 	}
 
-	function broadcastFishLeft(fishId) {
-		if (fishId === undefined || fishId === null) return;
-		io.sockets.emit("fish_left", { id: fishId });
+	function emitFullSyncToAll() {
+		if (getFishCount() >= batchFishThreshold) return;
+		io.sockets.emit("fish_batch", { fish: buildFishList() });
 	}
 
 	io.on("connection", function(socket) {
@@ -76,11 +81,11 @@ function setupSockets(io, config) {
 			if (fid !== undefined) {
 				delete fishState[fid];
 				delete socketToFishId[socket.id];
-				broadcastFishLeft(fid);
 			}
 			if (getFishCount() < batchFishThreshold) {
 				stopBatchTimer();
 			}
+			emitFullSyncToAll();
 		});
 
 		socket.on("canvas_to_server", function(data) {
@@ -120,7 +125,6 @@ function setupSockets(io, config) {
 			if (oldFid !== undefined) {
 				delete fishState[oldFid];
 				delete socketToFishId[socket.id];
-				broadcastFishLeft(oldFid);
 			}
 			var half = config.playerSpawnRange / 2;
 			var pos = {
@@ -129,32 +133,16 @@ function setupSockets(io, config) {
 			};
 			var newId = nextFishId;
 			nextFishId += 1;
-			var fishList = [];
-			for (var fid in fishState) {
-				if (fishState[fid] && fid !== String(newId)) fishList.push(fishState[fid]);
-			}
 			socket.emit("new_fish_id", {
 				id: newId,
 				pos: pos,
 				fobj: lakeWorld,
 				debugEnabled: config.debugEnabled === true
 			});
-			if (fishList.length > 0) {
-				var snapshotChunk = config.otherFishSnapshotChunk || 18;
-				if (fishList.length <= snapshotChunk) {
-					socket.emit("other_fish_snapshot", { fish: fishList });
-				} else {
-					var partCount = Math.ceil(fishList.length / snapshotChunk);
-					for (var pi = 0; pi < partCount; pi++) {
-						var from = pi * snapshotChunk;
-						socket.emit("other_fish_snapshot", {
-							fish: fishList.slice(from, from + snapshotChunk),
-							part: pi,
-							parts: partCount
-						});
-					}
-				}
+			if (getFishCount() < batchFishThreshold) {
+				stopBatchTimer();
 			}
+			emitFullSyncToAll();
 		});
 
 		socket.on("fish_death", function(data) {
@@ -163,10 +151,10 @@ function setupSockets(io, config) {
 				if (fid !== undefined) {
 					delete fishState[fid];
 					delete socketToFishId[socket.id];
-					broadcastFishLeft(fid);
 					if (getFishCount() < batchFishThreshold) {
 						stopBatchTimer();
 					}
+					emitFullSyncToAll();
 				}
 				var name = (data.name || socket.playerName || "").trim().substring(0, 12);
 				if (name) {
@@ -208,7 +196,7 @@ function setupSockets(io, config) {
 			try {
 				if (sock && sock.connected) sock.emit("leaderboard", rows);
 			} catch (e) {
-				console.error("sendLeaderboard emit error:", e);
+				console.error("sendLeaderboard error:", e);
 			}
 		});
 	}

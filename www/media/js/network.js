@@ -3,47 +3,6 @@
 (function (window) {
 	var state = window.Fishbowl;
 	var cfg = window.FishbowlConfig || { VIRTUAL_DELAY: 0 };
-	var pendingOtherFishSnapshot = null;
-	var pendingOtherFishSnapshotMerge = null;
-
-	function resetOtherFishSnapshotMerge() {
-		pendingOtherFishSnapshotMerge = null;
-	}
-
-	function mergeOtherFishSnapshotChunks(data) {
-		var fish = data && data.fish;
-		if (!fish || !fish.length) return { complete: false, list: null };
-		var parts = data.parts;
-		if (!parts || parts <= 1) return { complete: true, list: fish };
-		var partIdx = data.part;
-		if (typeof partIdx !== "number" || partIdx < 0 || partIdx >= parts) {
-			pendingOtherFishSnapshotMerge = null;
-			return { complete: false, list: null };
-		}
-		if (!pendingOtherFishSnapshotMerge || pendingOtherFishSnapshotMerge.n !== parts) {
-			pendingOtherFishSnapshotMerge = { n: parts, byPart: {} };
-		}
-		pendingOtherFishSnapshotMerge.byPart[partIdx] = fish;
-		var m = pendingOtherFishSnapshotMerge;
-		for (var p = 0; p < m.n; p++) {
-			if (!Object.prototype.hasOwnProperty.call(m.byPart, p)) {
-				return { complete: false, list: null };
-			}
-		}
-		var merged = [];
-		for (p = 0; p < m.n; p++) {
-			merged = merged.concat(m.byPart[p]);
-		}
-		pendingOtherFishSnapshotMerge = null;
-		return { complete: true, list: merged };
-	}
-
-	function flushPendingOtherFishSnapshot() {
-		if (!pendingOtherFishSnapshot || !pendingOtherFishSnapshot.length) return;
-		var list = pendingOtherFishSnapshot;
-		pendingOtherFishSnapshot = null;
-		applyOtherFishFromNewFishPayload(list);
-	}
 
 	function removeOtherFishById(fishId) {
 		if (fishId === undefined || fishId === null || !state.lake) return;
@@ -60,14 +19,43 @@
 		lake.otherFishId = lake.otherFishId.filter(function(id) { return String(id) !== sid; });
 	}
 
-	function processFishToClient(data, gen) {
+	function processFishToClient(msg, gen) {
+		if (Array.isArray(msg)) {
+			if (gen !== undefined && gen !== state.gameGeneration) return;
+			if (!state.lake || !state.myFish) return;
+			var lake = state.lake;
+			var myId = state.myFish.id;
+			var inBatch = {};
+			for (var i = 0; i < msg.length; i++) {
+				var e = msg[i];
+				if (e && e.id !== undefined) inBatch[e.id] = true;
+			}
+			var toRemove = [];
+			for (var j = 0; j < lake.otherFishId.length; j++) {
+				var oid = lake.otherFishId[j];
+				if (String(oid) === String(myId)) continue;
+				if (!inBatch[oid]) toRemove.push(oid);
+			}
+			for (var k = 0; k < toRemove.length; k++) {
+				removeOtherFishById(toRemove[k]);
+			}
+			for (var u = 0; u < msg.length; u++) {
+				processFishToClient(msg[u], gen);
+			}
+			return;
+		}
+
 		if (gen !== undefined && gen !== state.gameGeneration) return;
-		if (!state.lake || !state.myFish || state.myFish.id === data.id) return;
+		if (!msg || msg.id === undefined || !msg.pos) return;
+		if (!state.lake || !state.myFish || state.myFish.id === msg.id) return;
+
+		var ctp = msg.ctp ? msg.ctp.slice() : [];
+		var colorHue = (typeof msg.colorHue === "number" && msg.colorHue >= 0 && msg.colorHue <= 360) ? msg.colorHue : null;
 		var lake = state.lake;
 		var now = (typeof performance !== "undefined" && performance.now) ? performance.now() / 1000 : Date.now() / 1000;
-		var pos = { x: data.pos.x, y: data.pos.y };
-		if (lake.otherFish[data.id]) {
-			var o = lake.otherFish[data.id];
+		var pos = { x: msg.pos.x, y: msg.pos.y };
+		var o = lake.otherFish[msg.id];
+		if (o) {
 			if (o._lastUpdateTime !== undefined) {
 				var dt = now - o._lastUpdateTime;
 				if (dt > 0.001) {
@@ -84,55 +72,22 @@
 			} else {
 				o._lastVelocity = { x: 0, y: 0 };
 			}
-			o._lastPos = { x: pos.x, y: pos.y };
-			o._lastUpdateTime = now;
-			o.set(data.ctp, data.pos, data.size, data.color, lake, data.name, data.colorHue);
-			if (o.fishParts && o.fishParts.mounth) {
-				if (data.mouthOpen) { o.fishParts.mounth.scaleX = 2.2; o.fishParts.mounth.scaleY = 1.5; }
-				else { o.fishParts.mounth.scaleX = 1; o.fishParts.mounth.scaleY = 1; }
-			}
-			o.look_target = (data.lookTarget && typeof data.lookTarget.x === "number") ? { x: data.lookTarget.x, y: data.lookTarget.y } : null;
-			o.updatePupils();
-			o.setAlive(1);
 		} else {
-			lake.otherFishId.push(data.id);
-			var o = new Fish(data.id, data.pos, data.ctp, data.color, data.name || "Fish", data.colorHue);
-			o._lastPos = { x: pos.x, y: pos.y };
+			lake.otherFishId.push(msg.id);
+			o = new Fish(msg.id, msg.pos, ctp, msg.color, msg.name || "Fish", colorHue);
 			o._lastVelocity = { x: 0, y: 0 };
-			o._lastUpdateTime = now;
-			lake.otherFish[data.id] = o;
-			o.set(data.ctp, data.pos, data.size, data.color, lake, data.name, data.colorHue);
-			if (o.fishParts && o.fishParts.mounth) {
-				if (data.mouthOpen) { o.fishParts.mounth.scaleX = 2.2; o.fishParts.mounth.scaleY = 1.5; }
-				else { o.fishParts.mounth.scaleX = 1; o.fishParts.mounth.scaleY = 1; }
-			}
-			o.look_target = (data.lookTarget && typeof data.lookTarget.x === "number") ? { x: data.lookTarget.x, y: data.lookTarget.y } : null;
-			o.updatePupils();
-			o.setAlive(1);
+			lake.otherFish[msg.id] = o;
 		}
-	}
-
-	function applyOtherFishFromNewFishPayload(fishList) {
-		if (!fishList || !fishList.length || !state.lake || !state.myFish) return;
-		var gen = state.gameGeneration;
-		for (var i = 0; i < fishList.length; i++) {
-			var d = fishList[i];
-			if (!d || d.id === undefined) continue;
-			var payload = {
-				id: d.id,
-				pos: { x: d.pos.x, y: d.pos.y },
-				ctp: d.ctp ? d.ctp.slice() : [],
-				size: d.size,
-				color: d.color,
-				colorHue: (typeof d.colorHue === "number" && d.colorHue >= 0 && d.colorHue <= 360) ? d.colorHue : null,
-				name: d.name,
-				mouthOpen: d.mouthOpen === true
-			};
-			if (d.lookTarget && typeof d.lookTarget.x === "number" && typeof d.lookTarget.y === "number") {
-				payload.lookTarget = { x: d.lookTarget.x, y: d.lookTarget.y };
-			}
-			processFishToClient(payload, gen);
+		o._lastPos = { x: pos.x, y: pos.y };
+		o._lastUpdateTime = now;
+		o.set(ctp, msg.pos, msg.size, msg.color, lake, msg.name, colorHue);
+		if (o.fishParts && o.fishParts.mounth) {
+			if (msg.mouthOpen) { o.fishParts.mounth.scaleX = 2.2; o.fishParts.mounth.scaleY = 1.5; }
+			else { o.fishParts.mounth.scaleX = 1; o.fishParts.mounth.scaleY = 1; }
 		}
+		o.look_target = (msg.lookTarget && typeof msg.lookTarget.x === "number") ? { x: msg.lookTarget.x, y: msg.lookTarget.y } : null;
+		o.updatePupils();
+		o.setAlive(1);
 	}
 
 	function setup(socket) {
@@ -164,9 +119,7 @@
 			var delay = (cfg.VIRTUAL_DELAY || 0);
 			var gen = state.gameGeneration;
 			function process() {
-				if (data && data.id !== undefined) {
-					processFishToClient(data, gen);
-				}
+				processFishToClient(data, gen);
 			}
 			if (delay > 0) {
 				setTimeout(process, delay);
@@ -178,87 +131,20 @@
 		socket.on("fish_batch", function(data) {
 			state.networkMode = "batch";
 			var delay = (cfg.VIRTUAL_DELAY || 0);
-			var fishList = data.fish || [];
 			var gen = state.gameGeneration;
-			function processAll() {
-				for (var i = 0; i < fishList.length; i++) {
-					var d = fishList[i];
-					var payload = {
-						id: d.id,
-						pos: { x: d.pos.x, y: d.pos.y },
-						ctp: d.ctp ? d.ctp.slice() : [],
-						size: d.size,
-						color: d.color,
-						colorHue: (typeof d.colorHue === "number" && d.colorHue >= 0 && d.colorHue <= 360) ? d.colorHue : null,
-						name: d.name,
-						mouthOpen: d.mouthOpen === true
-					};
-					if (d.lookTarget && typeof d.lookTarget.x === "number" && typeof d.lookTarget.y === "number") {
-						payload.lookTarget = { x: d.lookTarget.x, y: d.lookTarget.y };
-					}
-					processFishToClient(payload, gen);
-				}
+			var fishList = (data && data.fish) ? data.fish : [];
+			function run() {
+				processFishToClient(fishList, gen);
 			}
 			if (delay > 0) {
-				setTimeout(processAll, delay);
+				setTimeout(run, delay);
 			} else {
-				processAll();
-			}
-		});
-
-		socket.on("fish_left", function(data) {
-			if (!data || data.id === undefined) return;
-			removeOtherFishById(data.id);
-		});
-
-		socket.on("other_fish_snapshot", function(data) {
-			var snap = mergeOtherFishSnapshotChunks(data);
-			if (!snap.complete) return;
-			var fish = snap.list;
-			if (!fish || !fish.length) return;
-			if (state.myFish && state.lake) {
-				applyOtherFishFromNewFishPayload(fish);
-			} else {
-				pendingOtherFishSnapshot = fish;
+				run();
 			}
 		});
 
 		socket.on("new_fish_id", function(data) {
-			resetOtherFishSnapshotMerge();
 			window.FishbowlGame.onNewFish(data);
-			flushPendingOtherFishSnapshot();
-			if (data.otherFish && data.otherFish.length) {
-				applyOtherFishFromNewFishPayload(data.otherFish);
-			}
-		});
-
-		var disconnectTimeoutId = null;
-		socket.on("disconnect", function() {
-			if (!state.myFish) return;
-			if (disconnectTimeoutId) return;
-			disconnectTimeoutId = setTimeout(function() {
-				disconnectTimeoutId = null;
-				if (!socket.connected && state.myFish) {
-					state.myFish = null;
-					state.lake = null;
-					state.gameGeneration = (state.gameGeneration || 0) + 1;
-					var no = document.getElementById("nameOverlay");
-					var inp = document.getElementById("playerNameInput");
-					if (no && inp) {
-						no.style.display = "flex";
-						inp.value = state.playerName || "";
-						inp.focus();
-						document.getElementById("nameError").textContent = "Disconnected. Re-enter name to play.";
-					}
-					window.FishbowlUI.hideLeaderboard();
-				}
-			}, 2500);
-		});
-		socket.on("connect", function() {
-			if (disconnectTimeoutId) {
-				clearTimeout(disconnectTimeoutId);
-				disconnectTimeoutId = null;
-			}
 		});
 	}
 
