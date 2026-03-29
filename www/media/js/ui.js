@@ -15,9 +15,10 @@
 		var list = document.getElementById("leaderboardList");
 		list.innerHTML = "";
 		if (!rows || rows.length === 0) {
-			var li = document.createElement("li");
-			li.textContent = "No scores yet";
-			list.appendChild(li);
+			var li0 = document.createElement("li");
+			li0.className = "lb-msg";
+			li0.textContent = "No scores yet";
+			list.appendChild(li0);
 			document.getElementById("leaderboardOverlay").style.display = "flex";
 			return;
 		}
@@ -49,6 +50,7 @@
 			}
 			var rank = rows.indexOf(item) + 1;
 			var li = document.createElement("li");
+			li.className = "lb-row";
 			var rankSpan = document.createElement("span");
 			rankSpan.className = "rank";
 			rankSpan.textContent = rank + ".";
@@ -70,6 +72,7 @@
 		var list = document.getElementById("leaderboardList");
 		list.innerHTML = "";
 		var li = document.createElement("li");
+		li.className = "lb-msg";
 		li.textContent = "Loading...";
 		list.appendChild(li);
 		document.getElementById("leaderboardOverlay").style.display = "flex";

@@ -22,9 +22,9 @@
 	function processFishToClient(msg, gen) {
 		if (Array.isArray(msg)) {
 			if (gen !== undefined && gen !== state.gameGeneration) return;
-			if (!state.lake || !state.myFish) return;
+			if (!state.lake) return;
 			var lake = state.lake;
-			var myId = state.myFish.id;
+			var myId = state.myFish ? state.myFish.id : null;
 			var inBatch = {};
 			for (var i = 0; i < msg.length; i++) {
 				var e = msg[i];
@@ -33,7 +33,7 @@
 			var toRemove = [];
 			for (var j = 0; j < lake.otherFishId.length; j++) {
 				var oid = lake.otherFishId[j];
-				if (String(oid) === String(myId)) continue;
+				if (myId != null && String(oid) === String(myId)) continue;
 				if (!inBatch[oid]) toRemove.push(oid);
 			}
 			for (var k = 0; k < toRemove.length; k++) {
@@ -47,7 +47,8 @@
 
 		if (gen !== undefined && gen !== state.gameGeneration) return;
 		if (!msg || msg.id === undefined || !msg.pos) return;
-		if (!state.lake || !state.myFish || state.myFish.id === msg.id) return;
+		if (!state.lake) return;
+		if (state.myFish && state.myFish.id === msg.id) return;
 
 		var ctp = msg.ctp ? msg.ctp.slice() : [];
 		var colorHue = (typeof msg.colorHue === "number" && msg.colorHue >= 0 && msg.colorHue <= 360) ? msg.colorHue : null;
@@ -91,6 +92,16 @@
 	}
 
 	function setup(socket) {
+		socket.on("spectator_lake", function(data) {
+			window.FishbowlGame.applySpectatorLake(data);
+		});
+
+		function requestSpectatorLake() {
+			socket.emit("request_spectator_lake");
+		}
+		socket.on("connect", requestSpectatorLake);
+		if (socket.connected) requestSpectatorLake();
+
 		socket.on("name_rejected", function() {
 			document.getElementById("nameError").textContent = "Name already taken";
 		});
@@ -114,12 +125,22 @@
 			var no = document.getElementById("nameOverlay");
 			var inp = document.getElementById("playerNameInput");
 			var err = document.getElementById("nameError");
-			if (inp) {
-				inp.value = "";
-				inp.focus();
-			}
+			if (inp) inp.value = "";
 			if (err) err.textContent = "";
 			if (no) no.style.display = "flex";
+			socket.emit("request_spectator_lake");
+			if (inp) {
+				function focusName() {
+					inp.focus();
+				}
+				if (typeof requestAnimationFrame === "function") {
+					requestAnimationFrame(function() {
+						requestAnimationFrame(focusName);
+					});
+				} else {
+					setTimeout(focusName, 0);
+				}
+			}
 		};
 
 		socket.on("fish_to_client", function(data) {

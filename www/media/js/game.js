@@ -10,6 +10,78 @@
 	var timePrev;
 	var debugDelaySamples = [];
 
+	function clampFrameDelta(dt) {
+		var cap = cfg.MAX_FRAME_DT != null ? cfg.MAX_FRAME_DT : 0.1;
+		if (dt <= 0) return 0;
+		return dt < cap ? dt : cap;
+	}
+
+	/** Stesso aggiornamento pesci remoti su tutte le schermate (nome, tutorial, leaderboard, gioco). */
+	function advanceOtherFish(lake, worldDt, now, vxMin, vxMax, vyMin, vyMax, myFish, localPlayActive) {
+		var toRemove = [];
+		var i;
+		for (i = 0; i < lake.otherFishId.length; i++) {
+			var other = lake.otherFish[lake.otherFishId[i]];
+			if (!other) continue;
+			var root = other.fishParts && other.fishParts.cont && other.fishParts.cont[0];
+			if (root && other._lastPos && other._lastVelocity && other._lastUpdateTime !== undefined) {
+				var ext = Math.min(now - other._lastUpdateTime, 0.15);
+				var targetX = other._lastPos.x + other._lastVelocity.x * ext;
+				var targetY = other._lastPos.y + other._lastVelocity.y * ext;
+				var smooth = cfg.OTHER_FISH_SMOOTH || 0;
+				if (smooth > 0 && smooth < 1) {
+					root.x = root.x + (targetX - root.x) * smooth;
+					root.y = root.y + (targetY - root.y) * smooth;
+				} else {
+					root.x = targetX;
+					root.y = targetY;
+				}
+				other.updateMouthFin();
+			}
+			if (other._displayCtp && other._targetCtp && other._colorStr) {
+				var ctpSmooth = cfg.OTHER_FISH_SMOOTH || 0;
+				var tc = other._targetCtp;
+				var dc = other._displayCtp;
+				if (tc.length !== dc.length) {
+					other._displayCtp = tc.slice();
+				} else {
+					for (var ci = 0; ci < tc.length; ci++) {
+						var diff = tc[ci] - dc[ci];
+						while (diff > Math.PI) diff -= 2 * Math.PI;
+						while (diff < -Math.PI) diff += 2 * Math.PI;
+						if (ctpSmooth > 0 && ctpSmooth < 1) {
+							dc[ci] = dc[ci] + diff * ctpSmooth;
+						} else {
+							dc[ci] = tc[ci];
+						}
+					}
+				}
+				other.drawFish(other._displayCtp, other._colorStr);
+			}
+			if (other.look_target && other.updatePupils) {
+				other.updatePupils();
+			}
+			if (myFish) {
+				other.updateRemotePlayerLabels(myFish, lake);
+			}
+			if (root) {
+				var ox = root.x, oy = root.y;
+				root.visible = (ox >= vxMin && ox <= vxMax && oy >= vyMin && oy <= vyMax);
+			}
+			if (myFish && localPlayActive) {
+				myFish.bite(myFish, other);
+				if (other.alive) myFish.bite(other, myFish);
+			}
+			if (other.setAlive(-worldDt) === false) {
+				toRemove.push(lake.otherFishId[i]);
+			}
+		}
+		for (var k = 0; k < toRemove.length; k++) {
+			lake.otherFish[toRemove[k]] = null;
+		}
+		lake.otherFishId = _.difference(lake.otherFishId, toRemove);
+	}
+
 	function drawInitialBackground() {
 		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
 		var ls = cfg.LAKE_START_SIZE || 10;
@@ -53,14 +125,12 @@
 		}, false);
 	}
 
-	function onNewFish(data) {
-		state.debugEnabled = data.debugEnabled === true;
-		state.gameGeneration = (state.gameGeneration || 0) + 1;
+	function setupLakeWorld(data) {
+		var pos = data.pos;
 		state.stage.removeAllChildren();
 		state.lakeStage.removeAllChildren();
 		state.stage.addChild(state.lakeStage);
 
-		var pos = data.pos;
 		state.waterSurface = new WaterSurface();
 		state.lakeBorder = new LakeBorder();
 		state.lake = new Lake();
@@ -74,10 +144,6 @@
 			state.lake.fObject.list[i] = new Algae(a.s, a.x, a.y, a.r, a.t, loader);
 			state.lakeStage.addChildAt(state.lake.fObject.list[i], 0);
 		}
-
-		var hue = Math.ceil(Math.random() * 360);
-		var color = createjs.Graphics.getHSL(hue, 100, 50);
-		state.myFish = new Fish(data.id, pos, [0, 0, 0, 0, 0], color, state.playerName, hue);
 
 		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
 		var foodSpawnRadius = cfg.FOOD_SPAWN_RADIUS || cfg.FOOD_SPAWN_HALF || 1000;
@@ -96,6 +162,51 @@
 		state.lakeStage.addChild(state.lakeBorder.shape);
 		state.lakeStage.addChildAt(state.lakeBorder.innerLineShape, 0);
 		state.stage.addChildAt(state.bg, 0);
+	}
+
+	function applyLakeStageViewport(ls, lake) {
+		if (!state.lakeStage || !lake) return;
+		state.lakeStage.scaleX = ls;
+		state.lakeStage.scaleY = ls;
+		state.lakeStage.regX = lake.x;
+		state.lakeStage.regY = lake.y;
+	}
+
+	function applySpectatorLake(data) {
+		if (state.myFish) return;
+		if (!data || !data.fobj || !data.pos) return;
+		state.spectatorLakeScale = null;
+		var nx = data.pos.x;
+		var ny = data.pos.y;
+		if (state.lake && state._spectatorLakePos &&
+			state._spectatorLakePos.x === nx && state._spectatorLakePos.y === ny) {
+			return;
+		}
+		if (state.lake) {
+			state.gameGeneration = (state.gameGeneration || 0) + 1;
+		}
+		setupLakeWorld(data);
+		state._spectatorLakePos = { x: nx, y: ny };
+		applyLakeStageViewport(cfg.LAKE_START_SIZE || 10, state.lake);
+		if (state.bg) {
+			drawInitialBackground();
+		}
+		state.stage.update();
+	}
+
+	function onNewFish(data) {
+		state.spectatorLakeScale = null;
+		state.debugEnabled = data.debugEnabled === true;
+		state.gameGeneration = (state.gameGeneration || 0) + 1;
+		setupLakeWorld(data);
+
+		var pos = data.pos;
+		var hue = Math.ceil(Math.random() * 360);
+		var color = createjs.Graphics.getHSL(hue, 100, 50);
+		state.myFish = new Fish(data.id, pos, [0, 0, 0, 0, 0], color, state.playerName, hue);
+
+		applyLakeStageViewport(state.myFish.lake_size, state.lake);
+
 		state.localPlayActive = false;
 		ui.showTutorial();
 	}
@@ -105,7 +216,7 @@
 		var dt = (timePrev !== undefined) ? (event.time - timePrev) / 1000 : 0;
 		timePrev = event.time;
 
-		if (!state.myFish || dt >= 0.1) {
+		if (!state.lake) {
 			if (!state.myFish && state.bg) {
 				drawInitialBackground();
 			}
@@ -119,40 +230,53 @@
 
 		var fish = state.myFish;
 		var lake = state.lake;
+		var worldDt = clampFrameDelta(dt);
 
-		var simDt = state.localPlayActive ? dt : 0;
-
-		fish._mouthOpen = false;
-		if (fish.update(simDt, lake)) {
-			state.lakeStage.scaleX = fish.lake_size;
-			state.lakeStage.scaleY = fish.lake_size;
-
-			var cw = state.stage.canvas.width;
-			var ch = state.stage.canvas.height;
-			var ls = fish.lake_size;
-			// Con pesce piccolo (ls grande) la viewport è stretta e le alghe appaiono "in ritardo".
-			// Aumentiamo il margin quando ls è grande per mostrare più alghe.
-			var margin = 1.3 * Math.max(1, ls / 2);
-			var halfW = (cw / ls) * margin;
-			var halfH = (ch / ls) * margin;
-			var vxMin = lake.x - halfW;
-			var vxMax = lake.x + halfW;
-			var vyMin = lake.y - halfH;
-			var vyMax = lake.y + halfH;
-
-			var i, o;
-			for (i = 0; i < state.lake.fObject.N; i++) {
-				o = state.lake.fObject.list[i];
-				o.visible = (o.x >= vxMin && o.x <= vxMax && o.y >= vyMin && o.y <= vyMax);
+		var ls;
+		if (fish) {
+			var simDt = state.localPlayActive ? worldDt : 0;
+			fish._mouthOpen = false;
+			if (!fish.update(simDt, lake)) {
+				handleFishDeath(socket);
+				state.stage.update(event);
+				return;
 			}
-
-			if (state.waterSurface) {
-				state.waterSurface.draw(lake, fish.lake_size, dt);
+			ls = fish.lake_size;
+			applyLakeStageViewport(ls, lake);
+		} else {
+			if (state.bg) {
+				drawInitialBackground();
 			}
-			if (state.lakeBorder) {
-				state.lakeBorder.draw(lake, fish.lake_size, fish);
-			}
+			ls = (typeof state.spectatorLakeScale === "number" && state.spectatorLakeScale > 0)
+				? state.spectatorLakeScale
+				: (cfg.LAKE_START_SIZE || 10);
+			applyLakeStageViewport(ls, lake);
+		}
 
+		var cw = state.stage.canvas.width;
+		var ch = state.stage.canvas.height;
+		var margin = 1.3 * Math.max(1, ls / 2);
+		var halfW = (cw / ls) * margin;
+		var halfH = (ch / ls) * margin;
+		var vxMin = lake.x - halfW;
+		var vxMax = lake.x + halfW;
+		var vyMin = lake.y - halfH;
+		var vyMax = lake.y + halfH;
+
+		var i, o;
+		for (i = 0; i < lake.fObject.N; i++) {
+			o = lake.fObject.list[i];
+			o.visible = (o.x >= vxMin && o.x <= vxMax && o.y >= vyMin && o.y <= vyMax);
+		}
+
+		if (state.waterSurface) {
+			state.waterSurface.draw(lake, ls, worldDt);
+		}
+		if (state.lakeBorder) {
+			state.lakeBorder.draw(lake, ls, fish || null);
+		}
+
+		if (fish) {
 			var foodToRemove = [];
 			_.each(lake.mObject, function(obj) {
 				if (obj.size < fish.size / 2.0) {
@@ -169,139 +293,87 @@
 			if (foodToRemove.length) {
 				lake.mObject = _.difference(lake.mObject, foodToRemove);
 			}
-
-			var toRemove = [];
-			var now = (typeof performance !== "undefined" && performance.now) ? performance.now() / 1000 : Date.now() / 1000;
-			for (var i = 0; i < lake.otherFishId.length; i++) {
-				var other = lake.otherFish[lake.otherFishId[i]];
-				if (!other) continue;
-				var root = other.fishParts && other.fishParts.cont && other.fishParts.cont[0];
-				if (root && other._lastPos && other._lastVelocity && other._lastUpdateTime !== undefined) {
-					var ext = Math.min(now - other._lastUpdateTime, 0.15);
-					var targetX = other._lastPos.x + other._lastVelocity.x * ext;
-					var targetY = other._lastPos.y + other._lastVelocity.y * ext;
-					var smooth = cfg.OTHER_FISH_SMOOTH || 0;
-					if (smooth > 0 && smooth < 1) {
-						root.x = root.x + (targetX - root.x) * smooth;
-						root.y = root.y + (targetY - root.y) * smooth;
-					} else {
-						root.x = targetX;
-						root.y = targetY;
-					}
-					other.updateMouthFin();
-				}
-				if (other._displayCtp && other._targetCtp && other._colorStr) {
-					var ctpSmooth = cfg.OTHER_FISH_SMOOTH || 0;
-					var tc = other._targetCtp;
-					var dc = other._displayCtp;
-					if (tc.length !== dc.length) {
-						other._displayCtp = tc.slice();
-					} else {
-						for (var ci = 0; ci < tc.length; ci++) {
-							var diff = tc[ci] - dc[ci];
-							while (diff > Math.PI) diff -= 2 * Math.PI;
-							while (diff < -Math.PI) diff += 2 * Math.PI;
-							if (ctpSmooth > 0 && ctpSmooth < 1) {
-								dc[ci] = dc[ci] + diff * ctpSmooth;
-							} else {
-								dc[ci] = tc[ci];
-							}
-						}
-					}
-					other.drawFish(other._displayCtp, other._colorStr);
-				}
-				if (other.look_target && other.updatePupils) {
-					other.updatePupils();
-				}
-				if (root) {
-					var ox = root.x, oy = root.y;
-					root.visible = (ox >= vxMin && ox <= vxMax && oy >= vyMin && oy <= vyMax);
-				}
-				if (state.localPlayActive) {
-					fish.bite(fish, other);
-					if (other.alive) fish.bite(other, fish);
-				}
-				if (other.setAlive(-dt) === false) {
-					toRemove.push(lake.otherFishId[i]);
-				}
-			}
-			for (var k = 0; k < toRemove.length; k++) {
-				lake.otherFish[toRemove[k]] = null;
-			}
-			lake.otherFishId = _.difference(lake.otherFishId, toRemove);
-
-			if (state.debugEnabled) {
-				var delaySum = 0;
-				var delayCount = 0;
-				for (var di = 0; di < lake.otherFishId.length; di++) {
-					var oth = lake.otherFish[lake.otherFishId[di]];
-					if (oth && oth._lastUpdateTime !== undefined) {
-						delaySum += (now - oth._lastUpdateTime) * 1000;
-						delayCount++;
-					}
-				}
-				var instantAvg = delayCount > 0 ? delaySum / delayCount : 0;
-				debugDelaySamples.push({ t: now, v: instantAvg });
-				var cutoff = now - 1;
-				while (debugDelaySamples.length > 0 && debugDelaySamples[0].t < cutoff) {
-					debugDelaySamples.shift();
-				}
-				var sum1s = 0;
-				for (var si = 0; si < debugDelaySamples.length; si++) sum1s += debugDelaySamples[si].v;
-				var avg1s = debugDelaySamples.length > 0 ? sum1s / debugDelaySamples.length : instantAvg;
-				ui.updateDebugPanel(delayCount > 0 ? avg1s : 0, delayCount, state.networkMode);
-			} else {
-				debugDelaySamples = [];
-				ui.updateDebugPanel(undefined, 0);
-			}
-
-			/* Z-order: più grande = davanti (setChildIndex, sortChildren non in CreateJS 2013) */
-			var sortable = [];
-			sortable.push({ obj: fish.fishParts.cont[0], depth: 1000 + fish.size * cfg.MOUTH_SIZE_FACTOR/2 });
-			_.each(lake.otherFishId, function(id) {
-				var o = lake.otherFish[id];
-				if (o && o.fishParts && o.fishParts.cont && o.fishParts.cont[0] && state.lakeStage.getChildIndex(o.fishParts.cont[0]) >= 0) {
-					sortable.push({ obj: o.fishParts.cont[0], depth: 1000 + o.size });
-				}
-			});
-			_.each(lake.mObject, function(obj) {
-				if (state.lakeStage.getChildIndex(obj) >= 0) {
-					sortable.push({ obj: obj, depth: obj.size });
-				}
-			});
-			for (i = 0; i < state.lake.fObject.N; i++) {
-				sortable.push({ obj: state.lake.fObject.list[i], depth: 1000 + state.lake.fObject.list[i].scaleX });
-			}
-			sortable.sort(function(a, b) { return a.depth - b.depth; });
-			var order = [];
-			if (state.lakeBorder && state.lakeBorder.innerLineShape) {
-				order.push(state.lakeBorder.innerLineShape);
-			}
-			for (i = 0; i < sortable.length; i++) {
-				order.push(sortable[i].obj);
-			}
-			if (state.waterSurface && state.waterSurface.shape) {
-				order.push(state.waterSurface.shape);
-			}
-			if (state.lakeBorder && state.lakeBorder.shape) {
-				order.push(state.lakeBorder.shape);
-			}
-			for (i = 0; i < order.length; i++) {
-				if (state.lakeStage.getChildIndex(order[i]) >= 0) {
-					state.lakeStage.setChildIndex(order[i], i);
-				}
-			}
-
-			if (state.localPlayActive) {
-				network.sendFish(socket);
-			}
-
-			if (!fish.alive) {
-				handleFishDeath(socket);
-			}
 		} else {
+			_.each(lake.mObject, function(obj) {
+				obj.update(event, lake.x, lake.y);
+				obj.visible = (obj.x >= vxMin && obj.x <= vxMax && obj.y >= vyMin && obj.y <= vyMax);
+			});
+		}
+
+		var now = (typeof performance !== "undefined" && performance.now) ? performance.now() / 1000 : Date.now() / 1000;
+		advanceOtherFish(lake, worldDt, now, vxMin, vxMax, vyMin, vyMax, fish, state.localPlayActive);
+
+		if (state.debugEnabled && fish) {
+			var delaySum = 0;
+			var delayCount = 0;
+			for (var di = 0; di < lake.otherFishId.length; di++) {
+				var oth = lake.otherFish[lake.otherFishId[di]];
+				if (oth && oth._lastUpdateTime !== undefined) {
+					delaySum += (now - oth._lastUpdateTime) * 1000;
+					delayCount++;
+				}
+			}
+			var instantAvg = delayCount > 0 ? delaySum / delayCount : 0;
+			debugDelaySamples.push({ t: now, v: instantAvg });
+			var cutoff = now - 1;
+			while (debugDelaySamples.length > 0 && debugDelaySamples[0].t < cutoff) {
+				debugDelaySamples.shift();
+			}
+			var sum1s = 0;
+			for (var si = 0; si < debugDelaySamples.length; si++) sum1s += debugDelaySamples[si].v;
+			var avg1s = debugDelaySamples.length > 0 ? sum1s / debugDelaySamples.length : instantAvg;
+			ui.updateDebugPanel(delayCount > 0 ? avg1s : 0, delayCount, state.networkMode);
+		} else {
+			debugDelaySamples = [];
+			ui.updateDebugPanel(undefined, 0);
+		}
+
+		var sortable = [];
+		if (fish) {
+			sortable.push({ obj: fish.fishParts.cont[0], depth: 1000 + fish.size * cfg.MOUTH_SIZE_FACTOR/2 });
+		}
+		_.each(lake.otherFishId, function(id) {
+			var o = lake.otherFish[id];
+			if (o && o.fishParts && o.fishParts.cont && o.fishParts.cont[0] && state.lakeStage.getChildIndex(o.fishParts.cont[0]) >= 0) {
+				sortable.push({ obj: o.fishParts.cont[0], depth: 1000 + o.size });
+			}
+		});
+		_.each(lake.mObject, function(obj) {
+			if (state.lakeStage.getChildIndex(obj) >= 0) {
+				sortable.push({ obj: obj, depth: obj.size });
+			}
+		});
+		for (i = 0; i < lake.fObject.N; i++) {
+			sortable.push({ obj: lake.fObject.list[i], depth: 1000 + lake.fObject.list[i].scaleX });
+		}
+		sortable.sort(function(a, b) { return a.depth - b.depth; });
+		var order = [];
+		if (state.lakeBorder && state.lakeBorder.innerLineShape) {
+			order.push(state.lakeBorder.innerLineShape);
+		}
+		for (i = 0; i < sortable.length; i++) {
+			order.push(sortable[i].obj);
+		}
+		if (state.waterSurface && state.waterSurface.shape) {
+			order.push(state.waterSurface.shape);
+		}
+		if (state.lakeBorder && state.lakeBorder.shape) {
+			order.push(state.lakeBorder.shape);
+		}
+		for (i = 0; i < order.length; i++) {
+			if (state.lakeStage.getChildIndex(order[i]) >= 0) {
+				state.lakeStage.setChildIndex(order[i], i);
+			}
+		}
+
+		if (fish && state.localPlayActive) {
+			network.sendFish(socket);
+		}
+
+		if (fish && !fish.alive) {
 			handleFishDeath(socket);
 		}
+
 		state.stage.update(event);
 	}
 
@@ -315,9 +387,8 @@
 		ui.showLeaderboardLoading();
 		network.emitFishDeath(socket, maxWeight);
 		state.playerName = null;
+		state.spectatorLakeScale = fish.lake_size;
 		state.myFish = null;
-		state.lake.x = 0;
-		state.lake.y = 0;
 		state.lake.vx = 0;
 		state.lake.vy = 0;
 		setTimeout(function() {
@@ -369,8 +440,12 @@
 		state.stage.canvas.width = window.innerWidth;
 		state.stage.canvas.height = window.innerHeight;
 		if (state.myFish) {
-			state.myFish.info.x = (state.stage.canvas.width / 2) - 12;
-			state.myFish.info.y = -(state.stage.canvas.height / 2) + 8;
+			var hx = (state.stage.canvas.width / 2) - 12;
+			var hy = -(state.stage.canvas.height / 2) + 10;
+			state.myFish.infoName.x = hx;
+			state.myFish.infoName.y = hy;
+			state.myFish.infoWeight.x = hx;
+			state.myFish.infoWeight.y = hy + 18;
 		}
 		state.stage.x = state.stage.canvas.width / 2;
 		state.stage.y = state.stage.canvas.height / 2;
@@ -378,6 +453,7 @@
 
 	window.FishbowlGame = {
 		init: init,
-		onNewFish: onNewFish
+		onNewFish: onNewFish,
+		applySpectatorLake: applySpectatorLake
 	};
 }(window));

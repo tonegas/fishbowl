@@ -134,10 +134,11 @@
 		fP.pupilR = pupilR;
 		fP.cont[0].addChild(pupilR);
 
-		this.nameLabel = new createjs.Text(this.name || "Fish", "8px Arial", "#ffffff");
-		this.nameLabel.alpha = 0.75;
+		this.nameLabel = new createjs.Text(this.name || "Fish", "600 9px Fredoka,Arial,sans-serif", "#ffffff");
+		this.nameLabel.alpha = 0.9;
 		this.nameLabel.textAlign = "center";
 		this.nameLabel.visible = false;
+		this.nameLabel.shadow = new createjs.Shadow("rgba(0,24,48,0.92)", 0, 1, 2);
 		stage.addChild(this.nameLabel);
 
 		this.arrow = new createjs.Shape();
@@ -145,17 +146,30 @@
 		this.arrow.visible = false;
 		stage.addChild(this.arrow);
 
-		this.arrowLabel = new createjs.Text("", "8px Arial", "#ffffff");
+		this.arrowLabel = new createjs.Text("", "600 9px Fredoka,Arial,sans-serif", "#eaf6ff");
 		this.arrowLabel.visible = false;
 		this.arrowLabel.textAlign = "center";
-		this.arrowLabel.alpha = 0.9;
+		this.arrowLabel.alpha = 0.92;
+		this.arrowLabel.shadow = new createjs.Shadow("rgba(0,24,48,0.92)", 0, 1, 2);
 		stage.addChild(this.arrowLabel);
 
-		this.info = new createjs.Text("", "bold 24px Arial", "#000000");
-		this.info.textAlign = "right";
-		this.info.x = (stage.canvas.width / 2) - 12;
-		this.info.y = -(stage.canvas.height / 2) + 8;
-		stage.addChild(this.info);
+		var hudLocal = !(state.myFish && state.myFish !== this);
+		var hudRight = (stage.canvas.width / 2) - 12;
+		var hudTop = -(stage.canvas.height / 2) + 10;
+		this.infoName = new createjs.Text("", "600 15px Fredoka,Arial,sans-serif", "#eaf6ff");
+		this.infoName.textAlign = "right";
+		this.infoName.x = hudRight;
+		this.infoName.y = hudTop;
+		this.infoName.visible = hudLocal;
+		this.infoName.shadow = new createjs.Shadow("rgba(0,28,48,0.88)", 0, 1, 3);
+		this.infoWeight = new createjs.Text("", "500 12px Fredoka,Arial,sans-serif", "#7dd3fc");
+		this.infoWeight.textAlign = "right";
+		this.infoWeight.x = hudRight;
+		this.infoWeight.y = hudTop + 18;
+		this.infoWeight.visible = hudLocal;
+		this.infoWeight.shadow = new createjs.Shadow("rgba(0,28,48,0.88)", 0, 1, 3);
+		stage.addChild(this.infoName);
+		stage.addChild(this.infoWeight);
 
 		this.set(this.ctp, this.pos, this.size, createjs.Graphics.getHSL(this.color, this.life / this.max_life * 200 - 100, 50), lake);
 	}
@@ -374,7 +388,10 @@
 		var num = Math.pow(this.size, 3) * 100;
 		if (num > this.max_weight) this.max_weight = num;
 		var weightStr = num < 0.1 ? (num * 1000).toFixed(1) + " g" : num < 0.5 ? Math.ceil(num * 1000) + " g" : num < 10 ? num.toFixed(2) + " kg" : num < 100 ? num.toFixed(1) + " kg" : Math.ceil(num) + " kg";
-		this.info.text = (this.name || "Fish") + " (" + weightStr + ")";
+		if (state.myFish === this) {
+			this.infoName.text = this.name || "Fish";
+			this.infoWeight.text = weightStr;
+		}
 
 		var targetSpread = ( - (this.ssp || 0) + (this.fsp || 0)) * 20;
 		this.finSpreadLateral += (targetSpread - this.finSpreadLateral) * 0.05;
@@ -442,17 +459,15 @@
 		var myFish = state.myFish;
 		var stage = state.stage;
 		if (name !== undefined) this.name = name || "Fish";
-		if (myFish && this !== myFish) {
+		/* Remoti: sempre _targetCtp / _displayCtp così il tick (smoothing) non usa angoli
+		   congelati quando myFish è null (leaderboard / spettatore). */
+		if (this !== myFish) {
 			this._targetCtp = ctp.slice();
 			this._colorStr = colorStr;
 			var h = (typeof colorHue === "number" && colorHue >= 0 && colorHue <= 360) ? colorHue : parseHueFromColorStr(colorStr);
 			if (h !== null && !isNaN(h)) this.color = h;
 			if (!this._displayCtp) this._displayCtp = ctp.slice();
 			this.drawFish(this._displayCtp, colorStr);
-		} else {
-			this.drawFish(ctp, colorStr);
-		}
-		if (myFish && this !== myFish) {
 			if (ctp.length === 0) {
 				this.die();
 				return;
@@ -462,46 +477,33 @@
 				for (var i = 0; i < ctp.length; i++) fP.cont[i].visible = true;
 				for (; i < fP.nPart; i++) fP.cont[i].visible = false;
 			}
-			var bordo = { x: stage.canvas.width / 2, y: stage.canvas.height / 2 };
-			var p = { x: (pos.x - lake.x) * myFish.lake_size, y: (pos.y - lake.y) * myFish.lake_size };
-			var ang = Math.atan2(p.x, -p.y);
-			this.arrow.x = Math.max(-bordo.x, Math.min(bordo.x, p.x));
-			this.arrow.y = Math.max(-bordo.y, Math.min(bordo.y, p.y));
-			if (Math.abs(p.x) < bordo.x && Math.abs(p.y) < bordo.y) {
-				this.arrow.visible = false;
-				this.arrowLabel.visible = false;
-				this.nameLabel.visible = true;
-				this.nameLabel.text = this.name || "Fish";
-				this.nameLabel.color = colorStr;
-				var headPt = fP.cont[0].localToLocal(50, 50, stage);
-				this.nameLabel.x = headPt.x;
-				this.nameLabel.y = headPt.y;
-			} else {
-				this.arrow.visible = true;
-				this.arrowLabel.visible = true;
-				this.nameLabel.visible = false;
-				this.arrowLabel.text = this.name || "Fish";
-				this.arrowLabel.color = colorStr;
-				this.arrow.graphics.clear();
-				this.arrow.graphics.beginFill(colorStr).lineTo(-5, 12.5).bezierCurveTo(-5, 12, 0, 8, 5, 12.2).lineTo(0, 0).endFill();
-				this.arrow.scaleX = 1.5;
-				this.arrow.scaleY = 1.5;
-				this.arrow.rotation = ang / Math.PI * 180;
-				var offset = 22;
-				this.arrowLabel.x = this.arrow.x + offset * Math.sin(ang);
-				this.arrowLabel.y = this.arrow.y - offset * Math.cos(ang);
-			}
+		} else {
+			this.drawFish(ctp, colorStr);
 		}
-		if (!myFish || this === myFish) {
+		/* Posizione nome/frecce: aggiornata ogni frame in updateRemotePlayerLabels (dopo interpolazione). */
+		if (myFish && this !== myFish) {
+			this.nameLabel.text = this.name || "Fish";
+			this.nameLabel.color = colorStr;
+			this.arrowLabel.text = this.name || "Fish";
+			this.arrowLabel.color = colorStr;
+			this.arrow.graphics.clear();
+			this.arrow.graphics.beginFill(colorStr).lineTo(-5, 12.5).bezierCurveTo(-5, 12, 0, 8, 5, 12.2).lineTo(0, 0).endFill();
+			this.arrow.scaleX = 1.5;
+			this.arrow.scaleY = 1.5;
+		} else if (this !== myFish) {
+			this.arrow.visible = false;
+			this.arrowLabel.visible = false;
+			this.nameLabel.visible = false;
+		}
+		/* Solo il pesce locale: i remoti restano su x/y da advanceOtherFish (stesso con o senza myFish). */
+		if (this === myFish) {
 			this.fishParts.cont[0].x = pos.x;
 			this.fishParts.cont[0].y = pos.y;
+			this.updateMouthFin();
 		}
 		this.size = size;
 		this.fishParts.cont[0].scaleX = size;
 		this.fishParts.cont[0].scaleY = size;
-		if (!myFish || this === myFish) {
-			this.updateMouthFin();
-		}
 	};
 
 	Fish.prototype.updateMouthFin = function() {
@@ -512,11 +514,66 @@
 		this.fin = this.lastfin.children[0].localToLocal(d.x / 2, d.y / 2, state.lakeStage);
 	};
 
+	/** Nome/frecce sullo stage seguono la posizione interpolata del pesce (non il solo tick di rete). */
+	Fish.prototype.updateRemotePlayerLabels = function(myFish, lake) {
+		if (!myFish || this === myFish) return;
+		var stage = state.stage;
+		var fP = this.fishParts;
+		var root = fP.cont[0];
+		if (!root) return;
+		var ls = myFish.lake_size;
+		var bordo = { x: stage.canvas.width / 2, y: stage.canvas.height / 2 };
+		var p = { x: (root.x - lake.x) * ls, y: (root.y - lake.y) * ls };
+		var ang = Math.atan2(p.x, -p.y);
+		var colorStr = this._colorStr || "#ffffff";
+		var sm = cfg.OTHER_FISH_SMOOTH;
+		var useLerp = sm > 0 && sm < 1;
+		this.arrow.x = Math.max(-bordo.x, Math.min(bordo.x, p.x));
+		this.arrow.y = Math.max(-bordo.y, Math.min(bordo.y, p.y));
+		if (Math.abs(p.x) < bordo.x && Math.abs(p.y) < bordo.y) {
+			this.arrow.visible = false;
+			this.arrowLabel.visible = false;
+			this.nameLabel.visible = true;
+			this.nameLabel.text = this.name || "Fish";
+			this.nameLabel.color = colorStr;
+			var headPt = root.localToLocal(50, 50, stage);
+			if (useLerp && this._uiNameNear) {
+				this.nameLabel.x += (headPt.x - this.nameLabel.x) * sm;
+				this.nameLabel.y += (headPt.y - this.nameLabel.y) * sm;
+			} else {
+				this.nameLabel.x = headPt.x;
+				this.nameLabel.y = headPt.y;
+			}
+			this._uiNameNear = true;
+			this._uiArrowNear = false;
+		} else {
+			this.arrow.visible = true;
+			this.arrowLabel.visible = true;
+			this.nameLabel.visible = false;
+			this.arrowLabel.text = this.name || "Fish";
+			this.arrowLabel.color = colorStr;
+			this.arrow.rotation = ang / Math.PI * 180;
+			var offset = 22;
+			var tAx = this.arrow.x + offset * Math.sin(ang);
+			var tAy = this.arrow.y - offset * Math.cos(ang);
+			if (useLerp && this._uiArrowNear) {
+				this.arrowLabel.x += (tAx - this.arrowLabel.x) * sm;
+				this.arrowLabel.y += (tAy - this.arrowLabel.y) * sm;
+			} else {
+				this.arrowLabel.x = tAx;
+				this.arrowLabel.y = tAy;
+			}
+			this._uiArrowNear = true;
+			this._uiNameNear = false;
+		}
+	};
+
 	Fish.prototype.die = function() {
 		state.stage.removeChild(this.arrow);
 		state.stage.removeChild(this.arrowLabel);
 		state.stage.removeChild(this.nameLabel);
-		state.stage.removeChild(this.info);
+		state.stage.removeChild(this.infoName);
+		state.stage.removeChild(this.infoWeight);
 		state.lakeStage.removeChild(this.fishParts.cont[0]);
 		this.alive = false;
 	};

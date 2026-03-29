@@ -53,8 +53,39 @@ function setupSockets(io, config) {
 		io.sockets.emit("fish_batch", { fish: buildFishList() });
 	}
 
+	function sendFishSnapshotToSocket(sock) {
+		var fishList = buildFishList();
+		if (fishList.length === 0) return;
+		if (getFishCount() >= batchFishThreshold) {
+			sock.emit("fish_batch", { fish: fishList });
+		} else {
+			for (var i = 0; i < fishList.length; i++) {
+				sock.emit("fish_to_client", fishList[i]);
+			}
+		}
+	}
+
+	function randomSpawnPos() {
+		var half = config.playerSpawnRange / 2;
+		return {
+			x: -half + Math.random() * config.playerSpawnRange,
+			y: -half + Math.random() * config.playerSpawnRange
+		};
+	}
+
 	io.on("connection", function(socket) {
 		socket.playerName = null;
+
+		socket.on("request_spectator_lake", function() {
+			if (!socket.spawnPreviewPos) {
+				socket.spawnPreviewPos = randomSpawnPos();
+			}
+			socket.emit("spectator_lake", {
+				fobj: lakeWorld,
+				pos: { x: socket.spawnPreviewPos.x, y: socket.spawnPreviewPos.y }
+			});
+			sendFishSnapshotToSocket(socket);
+		});
 
 		socket.on("register_name", function(data) {
 			var name = (data.name || "").trim().substring(0, 12);
@@ -126,11 +157,8 @@ function setupSockets(io, config) {
 				delete fishState[oldFid];
 				delete socketToFishId[socket.id];
 			}
-			var half = config.playerSpawnRange / 2;
-			var pos = {
-				x: -half + Math.random() * config.playerSpawnRange,
-				y: -half + Math.random() * config.playerSpawnRange
-			};
+			var pos = socket.spawnPreviewPos || randomSpawnPos();
+			socket.spawnPreviewPos = null;
 			var newId = nextFishId;
 			nextFishId += 1;
 			socket.emit("new_fish_id", {

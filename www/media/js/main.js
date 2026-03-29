@@ -16,7 +16,7 @@
 		var game = window.FishbowlGame;
 		var network = window.FishbowlNetwork;
 
-		network.setup(socket);
 		game.init(socket, loader);
+		network.setup(socket);
 	}
 }(window));

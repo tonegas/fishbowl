@@ -31,7 +31,8 @@
 		waterSurfaceLineCount: 10,
 		waterLineLengthX: 250,
 		waterLineThicknessMin: 0.1,
-		waterLineThicknessMax: 5.0
+		waterLineThicknessMax: 5.0,
+		maxFrameDt: 0.1
 	};
 
 	if (typeof module !== "undefined" && module.exports) {
@@ -67,7 +68,8 @@
 			WATER_LINE_COUNT: cfg.waterSurfaceLineCount,
 			WATER_LINE_LENGTH_X: cfg.waterLineLengthX,
 			WATER_LINE_THICKNESS_MIN: cfg.waterLineThicknessMin,
-			WATER_LINE_THICKNESS_MAX: cfg.waterLineThicknessMax
+			WATER_LINE_THICKNESS_MAX: cfg.waterLineThicknessMax,
+			MAX_FRAME_DT: cfg.maxFrameDt
 		};
 		window.Fishbowl = {
 			stage: null,
@@ -80,7 +82,8 @@
 			loader: null,
 			debugEnabled: false,
 			gameGeneration: 0,
-			localPlayActive: false
+			localPlayActive: false,
+			spectatorLakeScale: null
 		};
 	}
 }(typeof window !== "undefined" ? window : global));

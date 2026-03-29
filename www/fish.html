@@ -3,34 +3,48 @@
     <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&display=swap" rel="stylesheet">
     <style>
-        #nameOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index:1000; }
-        #nameOverlay .name-box { padding:16px 24px; background:rgba(0,0,0,0.6); border-radius:12px; display:flex; flex-direction:column; align-items:center; justify-content:center; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); box-sizing:border-box; }
-        #nameOverlay input { font:16px Arial,sans-serif; padding:8px 12px; background:transparent; border:none; color:rgba(255,255,255,0.95); width:160px; text-align:center; }
-        #nameOverlay input::placeholder { color:rgba(255,255,255,0.95); opacity:0.7; }
-        #nameOverlay input:focus { outline:none; }
-        #nameError { color:#ff6b6b; font:14px Arial,sans-serif; margin-top:8px; text-align:center; line-height:1.2; }
-        #leaderboardOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:1001; }
-        #leaderboardOverlay h2 { color:#fff; font:bold 24px Arial,sans-serif; margin-bottom:20px; }
-        #leaderboardList { color:#fff; font:bold 24px Arial,sans-serif; list-style:none; padding:0; margin:0 0 25px 0; max-height:60vh; overflow-y:auto; width:400px; }
-        #leaderboardList li { padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.2); display:table; width:99%; box-sizing:border-box; table-layout:fixed; }
-        #leaderboardList li .rank { display:table-cell; width:40px; vertical-align:middle; }
-        #leaderboardList li .name { display:table-cell; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; }
-        #leaderboardList li .weight { display:table-cell; width:85px; text-align:right; vertical-align:middle; white-space:nowrap; }
-        #leaderboardList li.separator { display:block; text-align:center; padding:4px 0; color:rgba(255,255,255,0.6); }
-        #playAgainBtn { font-size:20px; padding:12px 30px; background:rgba(100,200,100,0.8); border:none; color:#fff; border-radius:8px; cursor:pointer; }
-        #playAgainBtn:hover { background:rgba(100,200,100,1); }
-        #tutorialOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); display:none; flex-direction:column; align-items:center; justify-content:center; z-index:999; pointer-events:none; opacity:0; transition:opacity 1.2s ease-in; }
+        #nameOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:1000; pointer-events:none; box-sizing:border-box; }
+        #nameOverlay .name-top { pointer-events:auto; padding:22px 32px 26px; background:rgba(0,28,48,0.58); border-radius:22px; border:1px solid rgba(100,190,255,0.28); box-shadow:0 12px 40px rgba(0,0,0,0.35); display:flex; flex-direction:column; align-items:center; box-sizing:border-box; max-width:min(92vw, 380px); }
+        #nameOverlay .game-title { font-family:"Fredoka",system-ui,sans-serif; font-weight:600; font-size:clamp(2rem,7vw,2.75rem); letter-spacing:0.04em; margin:0 0 18px 0; line-height:1.05;
+            background:linear-gradient(185deg,#c8f0ff 0%,#5ec4e8 38%,#1e7aa3 72%,#0d4a66 100%); -webkit-background-clip:text; background-clip:text; color:transparent;
+            filter:drop-shadow(0 2px 3px rgba(0,50,90,0.5)) drop-shadow(0 0 18px rgba(80,180,255,0.35)); }
+        #nameOverlay input { font:17px Arial,sans-serif; padding:10px 14px; background:rgba(255,255,255,0.08); border:1px solid rgba(160,220,255,0.35); border-radius:10px; color:rgba(255,255,255,0.96); width:min(240px,85vw); text-align:center; box-sizing:border-box; }
+        #nameOverlay input::placeholder { color:rgba(255,255,255,0.55); }
+        #nameOverlay input:focus { outline:none; border-color:rgba(120,200,255,0.65); box-shadow:0 0 0 2px rgba(80,160,255,0.2); }
+        #nameError { color:#ff8a8a; font:14px Arial,sans-serif; margin-top:10px; text-align:center; line-height:1.2; min-height:1.2em; }
+        #leaderboardOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:transparent; display:none; flex-direction:column; align-items:center; justify-content:center; z-index:1001; pointer-events:none; box-sizing:border-box; }
+        #leaderboardOverlay .leaderboard-panel { pointer-events:auto; background:rgba(0,28,48,0.58); border:1px solid rgba(100,190,255,0.28); border-radius:22px; padding:22px 28px 26px; max-width:min(440px,92vw); max-height:min(92vh, 820px); display:flex; flex-direction:column; align-items:center; box-shadow:0 12px 40px rgba(0,0,0,0.35); box-sizing:border-box; width:100%; }
+        #leaderboardOverlay .lb-title { font-family:"Fredoka",system-ui,sans-serif; font-weight:600; font-size:clamp(1.35rem,4.5vw,1.9rem); letter-spacing:0.04em; margin:0 0 16px 0; line-height:1.1;
+            background:linear-gradient(185deg,#c8f0ff 0%,#5ec4e8 38%,#1e7aa3 72%,#0d4a66 100%); -webkit-background-clip:text; background-clip:text; color:transparent;
+            filter:drop-shadow(0 2px 3px rgba(0,50,90,0.45)) drop-shadow(0 0 14px rgba(80,180,255,0.3)); }
+        #leaderboardList { list-style:none; padding:0; margin:0 0 18px 0; flex:1 1 auto; min-height:0; max-height:min(72vh, 620px); overflow-y:auto; width:100%; min-width:0; }
+        #leaderboardList li.lb-row { padding:9px 4px; border-bottom:1px solid rgba(100,190,255,0.18); display:table; width:100%; box-sizing:border-box; table-layout:fixed; }
+        #leaderboardList li.lb-row:last-child { border-bottom:none; }
+        #leaderboardList li .rank { display:table-cell; width:36px; vertical-align:middle; font:600 13px "Fredoka",Arial,sans-serif; color:#7dd3fc; }
+        #leaderboardList li .name { display:table-cell; overflow:hidden; text-overflow:ellipsis; vertical-align:middle; font:15px Arial,sans-serif; color:rgba(255,255,255,0.92); padding-right:8px; }
+        #leaderboardList li .weight { display:table-cell; width:88px; text-align:right; vertical-align:middle; white-space:nowrap; font:500 13px "Fredoka",Arial,sans-serif; color:#9ee3ff; }
+        #leaderboardList li.separator { display:block; text-align:center; padding:6px 0; color:rgba(180,220,255,0.55); font:14px Arial,sans-serif; border-bottom:1px solid rgba(100,190,255,0.12); }
+        #leaderboardList li.lb-msg { display:block; text-align:center; padding:12px 8px; font:15px Arial,sans-serif; color:rgba(255,255,255,0.75); border:none; }
+        #playAgainBtn { font:600 16px "Fredoka",Arial,sans-serif; padding:11px 28px; background:rgba(80,150,200,0.35); border:1px solid rgba(140,210,255,0.45); color:#eaf6ff; border-radius:10px; cursor:pointer; box-shadow:0 0 14px rgba(80,160,255,0.15); }
+        #playAgainBtn:hover { background:rgba(100,175,220,0.5); border-color:rgba(170,230,255,0.65); color:#fff; }
+        #tutorialOverlay { position:fixed; top:0; left:0; width:100%; height:100%; background:transparent; display:none; flex-direction:column; align-items:center; justify-content:center; z-index:999; pointer-events:none; opacity:0; transition:opacity 1.2s ease-in; }
         #tutorialOverlay.visible { opacity:1; }
-        #tutorialOverlay .tutorial-box { text-align:center; padding:30px 50px; background:rgba(0,0,0,0.6); border-radius:12px; max-width:400px; }
-        #tutorialOverlay .tutorial-box p { color:rgba(255,255,255,0.95); font:18px Arial,sans-serif; margin:0 0 20px 0; line-height:1.5; }
-        #tutorialOverlay .tutorial-box .arrow-pad { display:flex; flex-direction:column; align-items:center; margin-top:15px; }
+        #tutorialOverlay .tutorial-box { text-align:center; padding:26px 36px 30px; background:rgba(0,28,48,0.58); border:1px solid rgba(100,190,255,0.28); border-radius:22px; max-width:min(440px, 92vw); box-shadow:0 12px 40px rgba(0,0,0,0.35); box-sizing:border-box; }
+        #tutorialOverlay .tutorial-title { font-family:"Fredoka",system-ui,sans-serif; font-weight:600; font-size:clamp(1.35rem,4.5vw,1.85rem); letter-spacing:0.04em; margin:0 0 18px 0; line-height:1.1;
+            background:linear-gradient(185deg,#c8f0ff 0%,#5ec4e8 38%,#1e7aa3 72%,#0d4a66 100%); -webkit-background-clip:text; background-clip:text; color:transparent;
+            filter:drop-shadow(0 2px 3px rgba(0,50,90,0.45)) drop-shadow(0 0 14px rgba(80,180,255,0.3)); }
+        #tutorialOverlay .tutorial-box p { color:rgba(255,255,255,0.92); font:17px Arial,sans-serif; margin:0 0 16px 0; line-height:1.55; }
+        #tutorialOverlay .tutorial-box .arrow-pad { display:flex; flex-direction:column; align-items:center; margin-top:12px; margin-bottom:4px; }
         #tutorialOverlay .tutorial-box .key-row { display:flex; justify-content:center; align-items:center; gap:8px; }
         #tutorialOverlay .tutorial-box .key-row-up { margin-bottom:6px; }
-        #tutorialOverlay .tutorial-box .key { padding:8px 14px; background:rgba(255,255,255,0.2); border:2px solid rgba(255,255,255,0.5); border-radius:6px; color:#fff; font:bold 16px Arial,sans-serif; min-width:44px; text-align:center; }
+        #tutorialOverlay .tutorial-box .key { padding:8px 14px; background:rgba(255,255,255,0.08); border:1px solid rgba(160,220,255,0.4); border-radius:10px; color:rgba(255,255,255,0.96); font:bold 16px Arial,sans-serif; min-width:44px; text-align:center; box-shadow:0 0 12px rgba(80,160,255,0.12); }
         #tutorialOverlay .tutorial-box .key-blink-left { animation:keyblink 0.8s ease-in-out infinite; }
         #tutorialOverlay .tutorial-box .key-blink-right { animation:keyblink 0.8s ease-in-out 0.4s infinite; }
-        @keyframes keyblink { 0%, 100% { opacity:1; box-shadow:0 0 8px rgba(255,255,255,0.5); } 50% { opacity:0.5; box-shadow:0 0 4px rgba(255,255,255,0.3); } }
+        @keyframes keyblink { 0%, 100% { opacity:1; box-shadow:0 0 10px rgba(120,200,255,0.45); border-color:rgba(180,230,255,0.55); } 50% { opacity:0.72; box-shadow:0 0 6px rgba(80,160,255,0.3); } }
         #debugPanel { position:fixed; top:8px; left:8px; padding:8px 12px; background:rgba(0,0,0,0.7); border-radius:6px; color:#7f7; font:12px monospace; z-index:998; display:none; pointer-events:none; }
     </style>
     <script type="text/javascript" src="../socket.io/socket.io.js"></script>
@@ -54,20 +68,24 @@
     <body style="margin:0;padding:0;overflow:hidden;">
 	<canvas id="Lake" width="800" height="800" style="display:block;"></canvas>
 	<div id="nameOverlay">
-		<div class="name-box">
-			<input type="text" id="playerNameInput" placeholder="Fish Name" maxlength="12" autocomplete="off" />
+		<div class="name-top">
+			<h1 class="game-title">Fishbowl</h1>
+			<input type="text" id="playerNameInput" placeholder="Your fish name" maxlength="12" autocomplete="off" />
 			<div id="nameError"></div>
 		</div>
 	</div>
 	<div id="leaderboardOverlay">
-		<h2>Leaderboard</h2>
-		<ul id="leaderboardList"></ul>
-		<button id="playAgainBtn">Play Again</button>
+		<div class="leaderboard-panel">
+			<h2 class="lb-title">Leaderboard</h2>
+			<ul id="leaderboardList"></ul>
+			<button id="playAgainBtn">Play Again</button>
+		</div>
 	</div>
 	<div id="debugPanel"></div>
 	<div id="tutorialOverlay">
 		<div class="tutorial-box">
-			<p>Eat to survive and Avoid bigger fish.</p>
+			<h2 class="tutorial-title">How to play</h2>
+			<p>Eat to survive and avoid bigger fish.</p>
             <p>Use ← → to move.</p>
 			<div class="arrow-pad">
 				<div class="key-row key-row-up">
