@@ -11,7 +11,7 @@
 	var debugDelaySamples = [];
 
 	function clampFrameDelta(dt) {
-		var cap = cfg.MAX_FRAME_DT != null ? cfg.MAX_FRAME_DT : 0.1;
+		var cap = cfg.maxFrameDt;
 		if (dt <= 0) return 0;
 		return dt < cap ? dt : cap;
 	}
@@ -28,7 +28,7 @@
 				var ext = Math.min(now - other._lastUpdateTime, 0.15);
 				var targetX = other._lastPos.x + other._lastVelocity.x * ext;
 				var targetY = other._lastPos.y + other._lastVelocity.y * ext;
-				var smooth = cfg.OTHER_FISH_SMOOTH || 0;
+				var smooth = cfg.otherFishSmooth;
 				if (smooth > 0 && smooth < 1) {
 					root.x = root.x + (targetX - root.x) * smooth;
 					root.y = root.y + (targetY - root.y) * smooth;
@@ -39,7 +39,7 @@
 				other.updateMouthFin();
 			}
 			if (other._displayCtp && other._targetCtp && other._colorStr) {
-				var ctpSmooth = cfg.OTHER_FISH_SMOOTH || 0;
+				var ctpSmooth = cfg.otherFishSmooth;
 				var tc = other._targetCtp;
 				var dc = other._displayCtp;
 				if (tc.length !== dc.length) {
@@ -83,8 +83,8 @@
 	}
 
 	function drawInitialBackground() {
-		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
-		var ls = cfg.LAKE_START_SIZE || 10;
+		var halfLake = cfg.lakeSize / 2;
+		var ls = cfg.lakeStartSize;
 		var lake = { x: 0, y: 0 };
 		var lakeLeft = (-halfLake - lake.x) * ls;
 		var lakeRight = (halfLake - lake.x) * ls;
@@ -145,12 +145,12 @@
 			state.lakeStage.addChildAt(state.lake.fObject.list[i], 0);
 		}
 
-		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
-		var foodSpawnRadius = cfg.FOOD_SPAWN_RADIUS || cfg.FOOD_SPAWN_HALF || 1000;
+		var halfLake = cfg.lakeSize / 2;
+		var foodSpawnRadius = cfg.foodSpawnRadius;
 		var cx = state.lake.x;
 		var cy = state.lake.y;
 		for (var j = 0; j < state.lake.mObjectN; j++) {
-			var size = cfg.FOOD_SIZE_MIN + Math.random() * (cfg.FOOD_SIZE_MAX - cfg.FOOD_SIZE_MIN);
+			var size = cfg.foodSizeMin + Math.random() * (cfg.foodSizeMax - cfg.foodSizeMin);
 			var lx = cx + (Math.random() * 2 - 1) * foodSpawnRadius;
 			var ly = cy + (Math.random() * 2 - 1) * foodSpawnRadius;
 			lx = Math.max(-halfLake + 1, Math.min(halfLake - 1, lx));
@@ -187,7 +187,7 @@
 		}
 		setupLakeWorld(data);
 		state._spectatorLakePos = { x: nx, y: ny };
-		applyLakeStageViewport(cfg.LAKE_START_SIZE || 10, state.lake);
+		applyLakeStageViewport(cfg.lakeStartSize, state.lake);
 		if (state.bg) {
 			drawInitialBackground();
 		}
@@ -249,7 +249,7 @@
 			}
 			ls = (typeof state.spectatorLakeScale === "number" && state.spectatorLakeScale > 0)
 				? state.spectatorLakeScale
-				: (cfg.LAKE_START_SIZE || 10);
+				: cfg.lakeStartSize;
 			applyLakeStageViewport(ls, lake);
 		}
 
@@ -330,7 +330,7 @@
 
 		var sortable = [];
 		if (fish) {
-			sortable.push({ obj: fish.fishParts.cont[0], depth: 1000 + fish.size * cfg.MOUTH_SIZE_FACTOR/2 });
+			sortable.push({ obj: fish.fishParts.cont[0], depth: 1000 + fish.size * cfg.mouthSizeFactor/2 });
 		}
 		_.each(lake.otherFishId, function(id) {
 			var o = lake.otherFish[id];
@@ -415,7 +415,7 @@
 			if (state.debugEnabled && state.myFish) {
 				state.myFish.life = Math.min(state.myFish.life + 30, state.myFish.max_life);
 				state.myFish.size_time += 10;
-				state.myFish.size_time = Math.min(state.myFish.size_time, cfg.FISH_END_LIFE);
+				state.myFish.size_time = Math.min(state.myFish.size_time, cfg.fishEndLife);
 			}
 			return false;
 		});

@@ -132,14 +132,16 @@
 		/* ---------- Loop di gioco (client) ---------- */
 		// Massimo delta tempo (secondi) usato in un singolo frame di simulazione (acqua, altri pesci, fisica locale).
 		// Evita salti enormi dopo pause tab; oltre questo valore il mondo avanza a step fissi per frame.
-		maxFrameDt: 0.1
+		maxFrameDt: 0.1,
+
+		// Porta TCP se l’argomento da riga di comando non è un numero valido (solo processo server Node).
+		defaultServerPort: 9999
 	};
 
 	if (typeof module !== "undefined" && module.exports) {
 		/* ---------- Processo server Node ---------- */
-		// Porta TCP su cui Node ascolta (argomento da riga di comando, default 9999).
-		// Esempio: node fish_server.js 3000
-		cfg.port = parseInt(process.argv[2], 10) || 9999;
+		var portArg = parseInt(process.argv[2], 10);
+		cfg.port = (isNaN(portArg) || portArg < 1) ? cfg.defaultServerPort : portArg;
 
 		// Se presente --debug abilita flag lato server (es. invio debugEnabled al client su new_fish).
 		// Utile per tasti cheat e pannello ritardo rete in sviluppo.
@@ -147,45 +149,8 @@
 		module.exports = cfg;
 	}
 	if (typeof window !== "undefined") {
-		// Copia dei valori di cfg con chiavi MAIUSCOLI: è ciò che leggono game.js, fish.js, network.js, ecc.
-		// Non duplicare numeri qui: aggiungi solo la riga di mapping quando introduci una nuova chiave in cfg.
-		window.FishbowlConfig = {
-			/* mondo e camera (alghe/spawn solo su cfg lato server) */
-			LAKE_SIZE: cfg.lakeSize,
-			LAKE_START_SIZE: cfg.lakeStartSize,
-			LAKE_END_SIZE: cfg.lakeEndSize,
-			/* cibo */
-			FOOD_COUNT: cfg.foodCount,
-			FOOD_SPAWN_HALF: cfg.foodSpawnRadius,
-			FOOD_SPAWN_RADIUS: cfg.foodSpawnRadius,
-			FOOD_SIZE_MIN: cfg.foodSizeMin,
-			FOOD_SIZE_MAX: cfg.foodSizeMax,
-			/* pesce locale */
-			FISH_START_SIZE: cfg.fishStartSize,
-			FISH_END_SIZE: cfg.fishEndSize,
-			FISH_MAX_SPEED: cfg.fishMaxSpeed,
-			MOUTH_SIZE_FACTOR: cfg.mouthSizeFactor,
-			CHASE_DISTANCE_FACTOR: cfg.chaseDistanceFactor,
-			WHOLE_FISH_SIZE_RATIO: cfg.wholeFishSizeRatio,
-			FISH_INITIAL_LIFE: cfg.fishInitialLife,
-			FISH_END_LIFE: cfg.fishEndLife,
-			FISH_LIFE_GAIN_FROM_FOOD: cfg.fishLifeGainFromFood,
-			FISH_LIFE_GAIN_FROM_FISH: cfg.fishLifeGainFromFish,
-			/* altri pesci */
-			FISH_OTHER_LIFE: cfg.fishOtherLife,
-			OTHER_FISH_SMOOTH: cfg.otherFishSmooth,
-			/* rete client */
-			SOCKET_IO_PATH: cfg.socketIoPath,
-			VIRTUAL_DELAY: cfg.virtualDelay,
-			/* acqua */
-			WATER_LINE_SPACING: cfg.waterSurfaceLineSpacing,
-			WATER_LINE_COUNT: cfg.waterSurfaceLineCount,
-			WATER_LINE_LENGTH_X: cfg.waterLineLengthX,
-			WATER_LINE_THICKNESS_MIN: cfg.waterLineThicknessMin,
-			WATER_LINE_THICKNESS_MAX: cfg.waterLineThicknessMax,
-			/* loop */
-			MAX_FRAME_DT: cfg.maxFrameDt
-		};
+		// Stesso oggetto cfg del server (camelCase); niente secondo dizionario di mapping.
+		window.FishbowlConfig = cfg;
 		// Stato runtime del client (canvas, lago, pesce locale, sessione). Non sono tuning di gameplay.
 		// I valori iniziali null/false vengono sostituiti quando carichi il gioco e ti connetti al server.
 		window.Fishbowl = {

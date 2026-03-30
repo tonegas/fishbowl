@@ -2,7 +2,7 @@
 
 (function (window) {
 	var state = window.Fishbowl;
-	var cfg = window.FishbowlConfig || { VIRTUAL_DELAY: 0 };
+	var cfg = window.FishbowlConfig;
 
 	function removeOtherFishById(fishId) {
 		if (fishId === undefined || fishId === null || !state.lake) return;
@@ -145,7 +145,7 @@
 
 		socket.on("fish_to_client", function(data) {
 			state.networkMode = "emit";
-			var delay = (cfg.VIRTUAL_DELAY || 0);
+			var delay = cfg.virtualDelay;
 			var gen = state.gameGeneration;
 			function process() {
 				processFishToClient(data, gen);
@@ -159,7 +159,7 @@
 
 		socket.on("fish_batch", function(data) {
 			state.networkMode = "batch";
-			var delay = (cfg.VIRTUAL_DELAY || 0);
+			var delay = cfg.virtualDelay;
 			var gen = state.gameGeneration;
 			var fishList = (data && data.fish) ? data.fish : [];
 			function run() {

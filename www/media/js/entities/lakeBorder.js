@@ -1,11 +1,11 @@
 "use strict";
 
 (function (window) {
-	var cfg = window.FishbowlConfig || { LAKE_SIZE: 10000 };
+	var cfg = window.FishbowlConfig;
 
 	/**
 	 * Bordo del lago: linea che identifica i confini come vetro di un acquario.
-	 * Disegna un rettangolo ai bordi di LAKE_SIZE.
+	 * Disegna un rettangolo ai bordi del mondo (lakeSize).
 	 */
 	function LakeBorder() {
 		this.shape = new createjs.Shape();
@@ -16,7 +16,7 @@
 		var g = this.shape.graphics;
 		g.clear();
 
-		var half = (cfg.LAKE_SIZE || 10000) / 2;
+		var half = cfg.lakeSize / 2;
 		var left = -half;
 		var right = half;
 		var top = -half;

@@ -10,8 +10,8 @@ var socketToFishId = {};
 
 function setupSockets(io, config) {
 	var lakeWorld = lake.createLake(config);
-	var batchIntervalMs = config.batchIntervalMs || 50;
-	var batchFishThreshold = config.batchFishThreshold || 20;
+	var batchIntervalMs = config.batchIntervalMs;
+	var batchFishThreshold = config.batchFishThreshold;
 	var batchTimer = null;
 
 	function buildFishList() {

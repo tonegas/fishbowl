@@ -1,7 +1,7 @@
 "use strict";
 
 (function (window) {
-	var cfg = window.FishbowlConfig || { LAKE_SIZE: 5000, WATER_LINE_SPACING: 25, WATER_LINE_COUNT: 12, WATER_LINE_LENGTH_X: 200, WATER_LINE_THICKNESS_MIN: 0.15, WATER_LINE_THICKNESS_MAX: 0.7 };
+	var cfg = window.FishbowlConfig;
 
 	/**
 	 * Superficie dell'acqua con onde. Le linee seguono il pesce (centro vista).
@@ -19,10 +19,10 @@
 			w.k = 2 * Math.PI / w.lambda;
 			w.omega = Math.sqrt(9.81 * w.k) * 0.35;
 		}
-		this.lineSpacing = cfg.WATER_LINE_SPACING;
-		this.baseLineCount = Math.max(1, cfg.WATER_LINE_COUNT);
+		this.lineSpacing = cfg.waterSurfaceLineSpacing;
+		this.baseLineCount = Math.max(1, cfg.waterSurfaceLineCount);
 		var maxLines = Math.max(100, this.baseLineCount * 25);
-		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
+		var halfLake = cfg.lakeSize / 2;
 		this.offsets = [];
 		for (var i = 0; i < maxLines; i++) {
 			this.offsets.push({
@@ -46,16 +46,16 @@
 		var g = this.shape.graphics;
 		g.clear();
 
-		var lakeStartSize = cfg.LAKE_START_SIZE || 10;
+		var lakeStartSize = cfg.lakeStartSize;
 		var scaleFactor = Math.max(1, lakeStartSize / lakeSize);
 		var lineCount = Math.min(this.offsets.length, Math.max(this.baseLineCount, Math.round(this.baseLineCount * scaleFactor)));
 
-		var halfW = cfg.WATER_LINE_LENGTH_X / 2;
+		var halfW = cfg.waterLineLengthX / 2;
 		var halfH = 5;
 		var step = 5;
 		var cx = lake.x;
 		var cy = lake.y;
-		var halfLake = (cfg.LAKE_SIZE || 10000) / 2;
+		var halfLake = cfg.lakeSize / 2;
 		var cw = (window.Fishbowl.stage && window.Fishbowl.stage.canvas) ? window.Fishbowl.stage.canvas.width : 800;
 		var ch = (window.Fishbowl.stage && window.Fishbowl.stage.canvas) ? window.Fishbowl.stage.canvas.height : 800;
 		var visibleExtentX = (cw / lakeSize) / 2;
@@ -104,8 +104,8 @@
 			var top = [], bot = [];
 			for (var j = 0; j < pts.length; j++) {
 				var px = pts[j].x, py = pts[j].y;
-				var tMin = cfg.WATER_LINE_THICKNESS_MIN || 0.15;
-				var tMax = cfg.WATER_LINE_THICKNESS_MAX || 0.7;
+				var tMin = cfg.waterLineThicknessMin;
+				var tMax = cfg.waterLineThicknessMax;
 				var tVar = (0.5 + 0.5 * Math.sin(px * 0.08 + this.time) * Math.cos(py * 0.2 + this.time * 0.7));
 				var distFromCenter = Math.abs(px - baseX);
 				var taper = Math.max(0, 1 - distFromCenter / halfW);
