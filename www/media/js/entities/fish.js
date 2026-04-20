@@ -157,9 +157,23 @@
 		this.infoWeight = new createjs.Text("", "500 12px Fredoka,Arial,sans-serif", "#7dd3fc");
 		this.infoWeight.textAlign = "right";
 		this.infoWeight.x = hudRight;
-		this.infoWeight.y = hudTop + 18;
+		this.infoWeight.y = hudTop + 22;
 		this.infoWeight.visible = hudLocal;
 		this.infoWeight.shadow = new createjs.Shadow("rgba(0,28,48,0.88)", 0, 1, 3);
+		if (hudLocal) {
+			this._lifeBarW = 148;
+			this._lifeBarH = 7;
+			this._lifeBarGap = 8;
+			this.lifeBarBg = new createjs.Shape();
+			this.lifeBarFill = new createjs.Shape();
+			this.lifeBarFill.regX = 0;
+			this.lifeBarFill.regY = 0;
+			stage.addChild(this.lifeBarBg);
+			stage.addChild(this.lifeBarFill);
+		} else {
+			this.lifeBarBg = null;
+			this.lifeBarFill = null;
+		}
 		stage.addChild(this.infoName);
 		stage.addChild(this.infoWeight);
 
@@ -385,6 +399,7 @@
 		if (state.myFish === this) {
 			this.infoName.text = this.name || "Fish";
 			this.infoWeight.text = weightStr;
+			this.refreshLocalLifeBar(dt);
 		}
 
 		var targetSpread = ( - (this.ssp || 0) + (this.fsp || 0)) * 20;
@@ -565,11 +580,159 @@
 		state.stage.removeChild(this.arrow);
 		state.stage.removeChild(this.arrowLabel);
 		state.stage.removeChild(this.nameLabel);
+		if (this.lifeBarBg) state.stage.removeChild(this.lifeBarBg);
+		if (this.lifeBarFill) state.stage.removeChild(this.lifeBarFill);
 		state.stage.removeChild(this.infoName);
 		state.stage.removeChild(this.infoWeight);
 		state.lakeStage.removeChild(this.fishParts.cont[0]);
 		this.alive = false;
 	};
+
+	Fish.prototype.layoutLocalHud = function() {
+		if (state.myFish !== this) return;
+		var stage = state.stage;
+		var hx = (stage.canvas.width / 2) - 12;
+		var hy = -(stage.canvas.height / 2) + 10;
+		this.infoName.x = hx;
+		this.infoName.y = hy;
+		this.infoWeight.x = hx;
+		this.infoWeight.y = hy + 22;
+		this.positionLifeBarBesideName(hx, hy);
+	};
+
+	Fish.prototype.positionLifeBarBesideName = function(hx, hy) {
+		if (!this.lifeBarBg || !this.lifeBarFill) return;
+		var w = this._lifeBarW;
+		var gap = this._lifeBarGap;
+		var nw = (typeof this.infoName.getMeasuredWidth === "function")
+			? this.infoName.getMeasuredWidth()
+			: (this.infoName.getBounds ? this.infoName.getBounds().width : 80);
+		nw = Math.max(nw, 4);
+		var barLeft = hx - gap - nw - w;
+		var barTop = hy + 4;
+		this.lifeBarBg.x = barLeft;
+		this.lifeBarBg.y = barTop;
+		this.lifeBarFill.x = barLeft;
+		this.lifeBarFill.y = barTop;
+	};
+
+	Fish.prototype.refreshLocalLifeBar = function(dt) {
+		if (!this.lifeBarBg || !this.lifeBarFill) return;
+		var w = this._lifeBarW;
+		var h = this._lifeBarH;
+		var cap = Math.max(1e-6, this.maxLife);
+		var growing = this.life > this.maxLife;
+		var ratio = growing ? 1 : Math.max(0, Math.min(1, this.life / cap));
+		if (this.life >= cap - 1e-4) {
+			ratio = 1;
+		}
+		var fillW = ratio >= 1 ? w : Math.max(0, ratio * w);
+		if (fillW > 0 && fillW < 1) {
+			fillW = 1;
+		}
+
+		var hx = (state.stage.canvas.width / 2) - 12;
+		var hy = -(state.stage.canvas.height / 2) + 10;
+		this.positionLifeBarBesideName(hx, hy);
+
+		var gBg = this.lifeBarBg.graphics;
+		var gFill = this.lifeBarFill.graphics;
+		gBg.clear();
+		gFill.clear();
+		gBg.beginFill("rgba(0,24,40,0.55)").drawRoundRect(0, 0, w, h, 3).endFill();
+		gBg.beginStroke("rgba(120,200,255,0.35)").setStrokeStyle(1).drawRoundRect(0, 0, w, h, 3).endStroke();
+
+		var timeMs = (typeof createjs !== "undefined" && createjs.Ticker) ? createjs.Ticker.getTime() : (this.time * 1000);
+		var tSec = timeMs / 1000;
+		if (fillW > 0) {
+			var fx = w - fillW;
+			var heat = Math.pow(Math.max(0, Math.min(1, 1 - ratio)), 1.15);
+			var grad = lifeBarPaletteGradient(heat, tSec);
+			gFill.beginLinearGradientFill(
+				grad.colors,
+				grad.ratios,
+				fx, 0,
+				fx + fillW, 0
+			).drawRoundRect(fx, 0, fillW, h, 2).endFill();
+		}
+
+		/* Glow solo con vita oltre maxLife; decade fino a zero quando life → maxLife (stesso valore). */
+		var excessLife = this.life - this.maxLife;
+		var glowFadeWindow = 22;
+		var glowStrength = excessLife > 0 ? Math.min(1, excessLife / glowFadeWindow) : 0;
+		glowStrength = glowStrength * glowStrength;
+		if (glowStrength > 0.004) {
+			var pulse = 0.78 + 0.22 * Math.sin(tSec * 6.283 * 1.2);
+			this.lifeBarFill.alpha = 1 + (pulse - 1) * glowStrength;
+			var bgPulse = 0.75 + 0.2 * Math.sin(tSec * 6.283 * 1.2 + 0.4);
+			this.lifeBarBg.alpha = 1 + (bgPulse - 1) * glowStrength;
+			var glowPulse = 0.5 + 0.5 * Math.sin(tSec * 6.283 * 1.1);
+			var glowAlpha = glowStrength * (0.5 + 0.4 * glowPulse);
+			var glowBlur = glowStrength * (8 + 16 * (0.5 + 0.5 * Math.sin(tSec * 6.283 * 1.4)));
+			if (glowBlur < 0.35 || glowAlpha < 0.02) {
+				this.lifeBarFill.shadow = null;
+			} else {
+				this.lifeBarFill.shadow = new createjs.Shadow(
+					"rgba(255, 248, 210, " + glowAlpha.toFixed(3) + ")",
+					0,
+					0,
+					glowBlur
+				);
+			}
+		} else {
+			this.lifeBarFill.alpha = 1;
+			this.lifeBarBg.alpha = 1;
+			this.lifeBarFill.shadow = null;
+		}
+		this.lifeBarFill.scaleX = 1;
+		this.lifeBarFill.scaleY = 1;
+	};
+
+	function rgbToHex(r, g, b) {
+		r = Math.max(0, Math.min(255, Math.round(r)));
+		g = Math.max(0, Math.min(255, Math.round(g)));
+		b = Math.max(0, Math.min(255, Math.round(b)));
+		return "#" + ("0" + r.toString(16)).slice(-2) + ("0" + g.toString(16)).slice(-2) + ("0" + b.toString(16)).slice(-2);
+	}
+
+	/**
+	 * Onda sinusoidale in RGB lungo la barra: sin(ωt + k·u) fa scorrere creste/valle da un capo all'altro.
+	 * heat 0 = blu↔verde; heat 1 = rosso↔arancio.
+	 */
+	function lifeBarPaletteGradient(heat, tSec) {
+		var nSeg = 3;
+		var sick = Math.pow(Math.max(0, Math.min(1, heat)), 0.92);
+		var omega = 1;
+		var k = Math.PI * 5;
+
+		/* Ancore RGB: l'onda interpola tra i due estremi di ogni scala */
+		var hBr = 14, hBg = 92, hBb = 218;
+		var hGr = 52, hGg = 202, hGb = 118;
+		var sRr = 188, sRg = 36, sRb = 42;
+		var sOr = 252, sOg = 118, sOb = 38;
+
+		var colors = [];
+		var ratios = [];
+		for (var i = 0; i <= nSeg; i++) {
+			var u = i / nSeg;
+			var angH = tSec * omega + u * k;
+			var wh = 0.5 + 0.5 * Math.sin(angH);
+			var angS = tSec * omega * 0.95 + u * k + 1.05;
+			var ws = 0.5 + 0.5 * Math.sin(angS);
+			var hr = hBr + (hGr - hBr) * wh;
+			var hg = hBg + (hGg - hBg) * wh;
+			var hb = hBb + (hGb - hBb) * wh;
+			var sr = sRr + (sOr - sRr) * ws;
+			var sg = sRg + (sOg - sRg) * ws;
+			var sb = sRb + (sOb - sRb) * ws;
+			var r = hr + (sr - hr) * sick;
+			var g = hg + (sg - hg) * sick;
+			var b = hb + (sb - hb) * sick;
+			colors.push(rgbToHex(r, g, b));
+			ratios.push(u);
+		}
+		return { colors: colors, ratios: ratios };
+	}
 
 	Fish.prototype.setAlive = function(val) {
 		if (val > 0) {

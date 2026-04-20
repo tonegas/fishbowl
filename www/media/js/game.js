@@ -204,6 +204,7 @@
 		var hue = Math.ceil(Math.random() * 360);
 		var color = createjs.Graphics.getHSL(hue, 100, 50);
 		state.myFish = new Fish(data.id, pos, [0, 0, 0, 0, 0], color, state.playerName, hue);
+		resize();
 
 		applyLakeStageViewport(state.myFish.lakeScale, state.lake);
 
@@ -465,12 +466,7 @@
 		state.stage.canvas.width = window.innerWidth;
 		state.stage.canvas.height = window.innerHeight;
 		if (state.myFish) {
-			var hx = (state.stage.canvas.width / 2) - 12;
-			var hy = -(state.stage.canvas.height / 2) + 10;
-			state.myFish.infoName.x = hx;
-			state.myFish.infoName.y = hy;
-			state.myFish.infoWeight.x = hx;
-			state.myFish.infoWeight.y = hy + 18;
+			state.myFish.layoutLocalHud();
 		}
 		state.stage.x = state.stage.canvas.width / 2;
 		state.stage.y = state.stage.canvas.height / 2;
