@@ -63,6 +63,9 @@
 		// Più è alto, più facile mangiare del cibo
 		eatFoodDistanceFactor: 4,
 
+		// Con cibo più grande della bocca: quanta "size" puoi mordere per frame (raggio bocca × questo valore).
+		foodBiteMouthRatio: 0.05,
+
 		// Distanza massima (in unità di gioco) a cui un pesce “insegue” un’altra preda per il morso.
 		// Valori alti rendono gli scontri tra pesci più frequenti a distanza.
 		chaseDistanceFactor: 100,

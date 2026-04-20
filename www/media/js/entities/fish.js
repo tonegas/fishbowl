@@ -279,30 +279,35 @@
 		var mouthRadius = cfg.mouthSizeFactor * this.size;
 		var foodRadius = obj.size;
 		var intersect = dis < cfg.eatFoodDistanceFactor * mouthRadius + foodRadius;
-		if (mouthRadius > foodRadius) {
-			if (intersect) {
-				this.addLifeGain(obj.size, "food");
-				var halfLake = cfg.lakeSize / 2;
-				var foodSpawnRadius = cfg.foodSpawnRadius;
+		if (intersect) {
+			var canSwallowWhole = mouthRadius > foodRadius;
+			var biteCap = mouthRadius * cfg.foodBiteMouthRatio;
+			var consumed = canSwallowWhole ? foodRadius : Math.min(foodRadius, biteCap);
+			this.addLifeGain(consumed, "food");
+			var remainder = foodRadius - consumed;
+			var halfLake = cfg.lakeSize / 2;
+			var foodSpawnRadius = cfg.foodSpawnRadius;
+			if (remainder <= cfg.foodSizeMin + 1e-9 || remainder < 1e-8) {
 				var newSize = cfg.foodSizeMin + Math.random() * (cfg.foodSizeMax - cfg.foodSizeMin);
 				var lx = lake.x + (Math.random() * 2 - 1) * foodSpawnRadius;
 				var ly = lake.y + (Math.random() * 2 - 1) * foodSpawnRadius;
 				lx = Math.max(-halfLake + 1, Math.min(halfLake - 1, lx));
 				ly = Math.max(-halfLake + 1, Math.min(halfLake - 1, ly));
 				obj.activate(newSize, lx, ly);
+			} else {
+				obj.resizeTo(remainder);
+				if (!canSwallowWhole) {
+					obj.vCX = Math.sin(this.ctp[0]) * this.velt / 20;
+					obj.vCY = -Math.cos(this.ctp[0]) * this.velt / 20;
+				}
 			}
-			if (dis < cfg.chaseDistanceFactor * this.size) {
-				this.look_target = { x: pos.x, y: pos.y };
-				this.updatePupils();
-				fP.mounth.scaleX = 2.2;
-				fP.mounth.scaleY = 1.5;
-				this._mouthOpen = true;
-			}
-		} else {
-			if (intersect) {
-				obj.vCX = Math.sin(this.ctp[0]) * this.velt / 20;
-				obj.vCY = -Math.cos(this.ctp[0]) * this.velt / 20;
-			}
+		}
+		if (dis < cfg.chaseDistanceFactor * this.size) {
+			this.look_target = { x: pos.x, y: pos.y };
+			this.updatePupils();
+			fP.mounth.scaleX = 2.2;
+			fP.mounth.scaleY = 1.5;
+			this._mouthOpen = true;
 		}
 	};
 

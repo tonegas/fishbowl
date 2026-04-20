@@ -34,8 +34,20 @@
 		}
 		this.graphics.closePath().endFill();
 	};
+	/** Riduce il pezzo senza spostarlo; mantiene colore e velocità residua. */
+	Food.prototype.resizeTo = function(newSize) {
+		var cfg = window.FishbowlConfig;
+		var s = Math.max(cfg.foodSizeMin, newSize);
+		var c = this.fillColor || "pink";
+		var vx = this.vCX;
+		var vy = this.vCY;
+		this.getShape(s, c);
+		this.vCX = vx;
+		this.vCY = vy;
+	};
 	Food.prototype.activate = function(size, x, y, c) {
-		c = typeof c !== "undefined" ? c : "pink";
+		c = typeof c !== "undefined" ? c : (this.fillColor || "pink");
+		this.fillColor = c;
 		this.getShape(size, c);
 		this.spin = (Math.random() + 0.9) * 2;
 		this.x = x;
