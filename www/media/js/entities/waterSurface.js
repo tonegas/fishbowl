@@ -46,8 +46,8 @@
 		var g = this.shape.graphics;
 		g.clear();
 
-		var lakeStartSize = cfg.lakeStartSize;
-		var scaleFactor = Math.max(1, lakeStartSize / lakeSize);
+		var lakeScaleStart = cfg.lakeScaleStart;
+		var scaleFactor = Math.max(1, lakeScaleStart / lakeSize);
 		var lineCount = Math.min(this.offsets.length, Math.max(this.baseLineCount, Math.round(this.baseLineCount * scaleFactor)));
 
 		var halfW = cfg.waterLineLengthX / 2;

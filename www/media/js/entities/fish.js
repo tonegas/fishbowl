@@ -21,20 +21,12 @@
 		this.mounth = { x: 0, y: 0 };
 		this.fin = { x: 0, y: 0 };
 
-		var lakeStartSize = cfg.lakeStartSize;
-		var lakeEndSize = cfg.lakeEndSize;
-		var startFishSize = cfg.fishStartSize / cfg.lakeStartSize;
-		var endFishSize = cfg.fishEndSize / cfg.lakeEndSize;
-		var startScreenSize = startFishSize * lakeStartSize;
-		var endScreenSize = endFishSize * lakeEndSize;
-
 		this.time = 0;
-		this.max_life = cfg.fishInitialLife;
-		this.life = cfg.fishInitialLife;
-		this.size_time = 0;
-		this.size = startFishSize;
-		this.lake_size = lakeStartSize;
-		this.screen_size = startScreenSize;
+		this.maxLife = cfg.fishLifeStart;
+		this.life = cfg.fishLifeStart;
+		this.size = cfg.fishSizeStart;
+		this.lakeScale = cfg.lakeScaleStart;
+		this.scale = 0;
 		this.max_weight = Math.pow(this.size, 3) * 100;
 		this.alive = true;
 		this.look_target = null;
@@ -171,7 +163,7 @@
 		stage.addChild(this.infoName);
 		stage.addChild(this.infoWeight);
 
-		this.set(this.ctp, this.pos, this.size, createjs.Graphics.getHSL(this.color, this.life / this.max_life * 200 - 100, 50), lake);
+		this.set(this.ctp, this.pos, this.size, createjs.Graphics.getHSL(this.color, this.life / this.maxLife * 200 - 100, 50), lake);
 	}
 
 	Fish.prototype.updatePupils = function() {
@@ -205,10 +197,6 @@
 	Fish.prototype.addLifeGain = function(consumedSize, gainType) {
 		var gain = (consumedSize / this.size) * (gainType === "fish" ? cfg.fishLifeGainFromFish : cfg.fishLifeGainFromFood);
 		this.life += gain;
-		if (this.life >= this.max_life) {
-			let over = (this.life - this.max_life) / 2;
-			this.life = this.max_life + over;
-		}
 	};
 
 	Fish.prototype.bite = function(predator, prey) {
@@ -222,13 +210,13 @@
 		var headDSegmentRadius = Math.min(headD.x, headD.y) / 2 * prey.size;
 		if (mouthRadius <= tailSegmentRadius) return;
 		var eatWhole = headDSegmentRadius < mouthRadius;
-		var dis = cfg.chaseDistanceFactor * predator.size;
+		var dis;
 		if (eatWhole) {
 			dis = Math.sqrt(
 				Math.pow(predator.mounth.x - prey.mounth.x, 2) + 
 				Math.pow(predator.mounth.y - prey.mounth.y, 2)
 			);
-			var intersect = dis < mouthRadius + headDSegmentRadius;
+			var intersect = dis < cfg.eatFishDistanceFactor * mouthRadius + headDSegmentRadius;
 			if (intersect) {
 				if (prey === this) {
 					this.alive = false;
@@ -245,7 +233,7 @@
 				Math.pow(predator.mounth.x - prey.fin.x, 2) + 
 				Math.pow(predator.mounth.y - prey.fin.y, 2)
 			);
-			var intersect = dis < mouthRadius + tailSegmentRadius;
+			var intersect = dis < cfg.eatFishDistanceFactor * mouthRadius + tailSegmentRadius;
 			if (intersect) {
 				prey.lastfin.visible = false;
 				prey.fishParts.nRPart -= 1;
@@ -276,7 +264,7 @@
 		var dis = Math.sqrt(Math.pow(this.mounth.x - pos.x, 2) + Math.pow(this.mounth.y - pos.y, 2));
 		var mouthRadius = cfg.mouthSizeFactor * this.size;
 		var foodRadius = obj.size;
-		var intersect = dis < mouthRadius + foodRadius;
+		var intersect = dis < cfg.eatFoodDistanceFactor * mouthRadius + foodRadius;
 		if (mouthRadius > foodRadius) {
 			if (intersect) {
 				this.addLifeGain(obj.size, "food");
@@ -306,13 +294,14 @@
 
 	Fish.prototype.update = function(dt, lake) {
 		var fP = this.fishParts;
-		var endLife = cfg.fishEndLife;
-		var lakeStartSize = cfg.lakeStartSize;
-		var lakeEndSize = cfg.lakeEndSize;
-		var startFishSize = cfg.fishStartSize;
-		var endFishSize = cfg.fishEndSize;
-		var startScreenSize = startFishSize * lakeStartSize;
-		var endScreenSize = endFishSize * lakeEndSize;
+
+		var fishLifeStart = cfg.fishLifeStart;
+		var fishLifeEnd = cfg.fishLifeEnd;
+		var lakeScaleStart = cfg.lakeScaleStart;
+		var lakeScaleEnd = cfg.lakeScaleEnd;
+		var fishSizeStart = cfg.fishSizeStart;
+		var fishSizeEnd = cfg.fishSizeEnd;
+
 
 		if (this.life <= 0 || !this.alive) {
 			this.alive = false;
@@ -350,9 +339,9 @@
 		this.pos2 = ctata / this.fishParts.nPart;
 		this.vel2 = ctvta / this.fishParts.nPart;
 		this.acc2 = ctata / this.fishParts.nPart;
-		this.acct = (this.vel2 * 45 + this.acc2 * 4 *(this.size / cfg.fishStartSize)) / 10.0 - this.velt * ((1 - this.fsp * 0.5) + this.ssp * 4) * 0.4 ;
+		this.acct = (this.vel2 * 45 + this.acc2 * 4 *(this.size / cfg.fishSizeStart)) / 10.0 - this.velt * ((1 - this.fsp * 0.5) + this.ssp * 4) * 0.4 ;
 		this.velt = this.acct * dt + this.velt;
-		var maxSpeed = cfg.fishMaxSpeed * (this.size / cfg.fishStartSize);
+		var maxSpeed = cfg.fishMaxSpeed * (this.size / cfg.fishSizeStart);
 		if (this.velt > maxSpeed) this.velt = maxSpeed;
 		if (this.velt < 0) this.velt = 0;
 		this.pos.x += Math.sin(this.ctp[0]) * this.velt * dt;
@@ -377,13 +366,18 @@
 
 		this.life -= dt;
 		this.time += dt;
-		if(this.life > this.max_life) {
-			this.size_time = Math.min(this.size_time + dt, endLife);
+		if(this.life > this.maxLife) {
+			var timeToDouble = cfg.timeToDouble;
+			var sizeQ = Math.pow(this.size, 3);
+			var x = timeToDouble / Math.log(2) * Math.log(sizeQ / Math.pow(cfg.fishSizeStart, 3));
+			var y = Math.pow(cfg.fishSizeStart,3) * Math.exp(Math.log(2) / timeToDouble * (x + dt));
+			this.size = Math.min(Math.pow(y, 1/3), cfg.fishSizeEnd);
 		}
 
-		this.screen_size = (endScreenSize - startScreenSize) / endLife * this.size_time + startScreenSize;
-		this.lake_size = (lakeEndSize - lakeStartSize) / endLife * this.size_time + lakeStartSize;
-		this.size = this.screen_size / this.lake_size;
+		var scale = (this.size - fishSizeStart) /(fishSizeEnd - fishSizeStart);
+		this.scale = scale;
+		this.maxLife =  fishLifeStart + (fishLifeEnd - fishLifeStart) * scale;
+		this.lakeScale = 1.0/(1.0/lakeScaleStart * (1 - scale) + scale * 1.0/lakeScaleEnd);
 
 		var num = Math.pow(this.size, 3) * 100;
 		if (num > this.max_weight) this.max_weight = num;
@@ -403,7 +397,7 @@
 
 		state.bg.graphics.clear();
 		var halfLake = cfg.lakeSize / 2;
-		var ls = state.myFish.lake_size;
+		var ls = state.myFish.lakeScale;
 		var lakeLeft = (-halfLake - lake.x) * ls;
 		var lakeRight = (halfLake - lake.x) * ls;
 		var lakeTop = (-halfLake - lake.y) * ls;
@@ -419,7 +413,7 @@
 			state.bg.graphics.beginLinearGradientFill(["#77F", "#113"], [0, 1], drawL, lakeTop, drawL, lakeBottom).drawRect(drawL, drawT, drawR - drawL, drawB - drawT).endFill();
 		}
 
-		this.set(this.ctp, this.pos, this.size, createjs.Graphics.getHSL(this.color, this.life / this.max_life * 200 - 100, 50), lake);
+		this.set(this.ctp, this.pos, this.size, createjs.Graphics.getHSL(this.color, this.life / this.maxLife * 200 - 100, 50), lake);
 		state.lakeStage.regX = lake.x;
 		state.lakeStage.regY = lake.y;
 		return this.alive;
@@ -501,7 +495,6 @@
 			this.fishParts.cont[0].y = pos.y;
 			this.updateMouthFin();
 		}
-		this.size = size;
 		this.fishParts.cont[0].scaleX = size;
 		this.fishParts.cont[0].scaleY = size;
 	};
@@ -521,7 +514,7 @@
 		var fP = this.fishParts;
 		var root = fP.cont[0];
 		if (!root) return;
-		var ls = myFish.lake_size;
+		var ls = myFish.lakeScale;
 		var bordo = { x: stage.canvas.width / 2, y: stage.canvas.height / 2 };
 		var p = { x: (root.x - lake.x) * ls, y: (root.y - lake.y) * ls };
 		var ang = Math.atan2(p.x, -p.y);

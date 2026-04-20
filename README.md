@@ -66,8 +66,8 @@ Main parameters in `www/media/js/config.js`:
 | `foodSpawnRadius` | Spawn radius around player | 500 |
 | `algaeCount` | Number of algae | 150 |
 | `playerSpawnRange` | Initial spawn area (centered) | 100 |
-| `fishInitialLife` | Starting life (seconds) | 180 |
-| `fishEndLife` | Time to reach max size (seconds) | 1200 |
+| `fishLifeStart` | Starting life (seconds) | 180 |
+| `fishLifeEnd` | Time to reach max size (seconds) | 1200 |
 | `batchIntervalMs` | Batch broadcast interval (ms), when in batch mode | 20 |
 | `batchFishThreshold` | Fish count above which batch mode is used (< N = emit, ≥ N = batch) | 10 |
 | `otherFishSmooth` | Smoothing factor for other fish position and orientation (0 = no smooth, 0.3 = moderate) | 0.25 |

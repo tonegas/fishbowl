@@ -8,12 +8,12 @@
 		lakeSize: 10000,
 
 		// Scala iniziale della “camera” sul lago (CreateJS: scale del lakeStage all’inizio).
-		// Valori più alti = zoom più ravvicinato sul pesce piccolo; tipicamente accoppiato a fishStartSize.
-		lakeStartSize: 10,
+		// Valori più alti = zoom più ravvicinato sul pesce piccolo; tipicamente accoppiato a fishSizeStart.
+		lakeScaleStart: 10,
 
-		// Scala finale del lago quando il pesce è cresciuto (fine curva di crescita / zoom out).
+		// Scala finale della camera quando il pesce è cresciuto (fine curva di crescita / zoom out).
 		// Più è basso, più il mondo appare lontano a fine partita.
-		lakeEndSize: 0.5,
+		lakeScaleEnd: 0.5,
 
 		// Numero di alghe decorative generate nel layout del lago (condiviso server → client).
 		// Più alghe = più carico di rendering ma scenario più ricco.
@@ -32,7 +32,7 @@
 		// Oltre questa distanza dal centro il cibo viene riposizionato verso il giocatore.
 		foodSpawnRadius: 500,
 
-		// Dimensione minima di un pezzo di cibo nel mondo (scala coerente con fishStartSize).
+		// Dimensione minima di un pezzo di cibo nel mondo (scala coerente con fishSizeStart).
 		// Cibo più piccolo è più difficile da vedere ma può essere mangiato dai piccoli.
 		foodSizeMin: 0.01,
 
@@ -41,13 +41,11 @@
 		foodSizeMax: 0.50,
 
 		/* ---------- Pesce locale: movimento e combattimento ---------- */
-		// Taglia iniziale del pesce nel mondo (coerente con lakeStartSize per la size a schermo).
-		// È il punto di partenza della curva di crescita verso fishEndSize.
-		fishStartSize: 0.04,
+		// DA RIVEDERE Massa in g del pesce iniziale
+		fishSizeStart: Math.pow(0.005 / 100, 1/3),
 
-		// Taglia finale massima del pesce nel mondo dopo una crescita completa.
-		// Insieme a lakeEndSize determina quanto grande appare il pesce a fine scala.
-		fishEndSize: 2.0,
+		// DA RIVEDERE Massa in g del pesce finale
+		fishSizeEnd: Math.pow(1000 / 100, 1/3),
 
 		// Velocità massima del pesce locale (saturazione del velt in fish.update).
 		// Più è alta, più reattivo e veloce è il controllo a parità di size.
@@ -56,6 +54,14 @@
 		// Moltiplicatore del raggio della bocca rispetto alla size del pesce (collisioni mangiare/predare).
 		// Più è alto, più facile intercettare prede e cibo a parità di dimensione visiva.
 		mouthSizeFactor: 5,
+
+		// Da che distanza riesce a mangiare un altro pesce
+		// Più è alto, più facile mangiare un altro pesce
+		eatFishDistanceFactor: 4,
+
+		// Da che distanza riesce a mangiare un altro pesce
+		// Più è alto, più facile mangiare del cibo
+		eatFoodDistanceFactor: 4,
 
 		// Distanza massima (in unità di gioco) a cui un pesce “insegue” un’altra preda per il morso.
 		// Valori alti rendono gli scontri tra pesci più frequenti a distanza.
@@ -66,13 +72,16 @@
 		wholeFishSizeRatio: 10,
 
 		/* ---------- Pesce locale: vita e crescita ---------- */
+		// Periodo (secondi) in cui la massa del pesce raddoppia se la crescita è attiva (vedi fish.update: usa size³ e exp/ln).
+		// Con fishSizeStart da 5 mg e crescita continua: timeToDouble = 204 → ~1 h per ~1000 g; timeToDouble = 408 → ~2 h.
+		timeToDouble: 250,
+
 		// Vita iniziale del tuo pesce, in secondi di simulazione (fish.update fa life -= dt; dt è in secondi).
 		// Finché il tutorial blocca la simulazione (simDt = 0) la vita non scende; non sono tick del Ticker.
-		fishInitialLife: 2 * 60,
-
-		// Durata (in secondi di simulazione) della fase in cui il pesce può crescere fino alla taglia finale.
-		// Dopo questo tempo size_time smette di avanzare verso fishEndSize / lakeEndSize.
-		fishEndLife: 20 * 60,
+		fishLifeStart: 2 * 60,
+		
+		// DA RIVEDERE
+		fishLifeEnd: 1 * 60,
 
 		// Quanta vita recuperi mangiando cibo (scalata in base al rapporto dimensione cibo/pesce).
 		// Valori alti rendono il recupero per fame molto generoso.
@@ -80,7 +89,7 @@
 
 		// Vita guadagnata quando mangi un altro pesce (scalata come sopra).
 		// Di solito molto più alto del cibo per premiare i combattimenti riusciti.
-		fishLifeGainFromFish: 50,
+		fishLifeGainFromFish: 5,
 
 		/* ---------- Altri pesci (client) ---------- */
 		// “Vita” degli altri pesci lato client per setAlive (secondi prima che spariscano senza aggiornamenti).
@@ -165,7 +174,7 @@
 			debugEnabled: false,
 			gameGeneration: 0,
 			localPlayActive: false,
-			spectatorLakeScale: null
+			savedLakeScale: null
 		};
 	}
 }(typeof window !== "undefined" ? window : global));

@@ -84,7 +84,7 @@
 
 	function drawInitialBackground() {
 		var halfLake = cfg.lakeSize / 2;
-		var ls = cfg.lakeStartSize;
+		var ls = cfg.lakeScaleStart;
 		var lake = { x: 0, y: 0 };
 		var lakeLeft = (-halfLake - lake.x) * ls;
 		var lakeRight = (halfLake - lake.x) * ls;
@@ -175,7 +175,7 @@
 	function applySpectatorLake(data) {
 		if (state.myFish) return;
 		if (!data || !data.fobj || !data.pos) return;
-		state.spectatorLakeScale = null;
+		state.savedLakeScale = null;
 		var nx = data.pos.x;
 		var ny = data.pos.y;
 		if (state.lake && state._spectatorLakePos &&
@@ -187,7 +187,7 @@
 		}
 		setupLakeWorld(data);
 		state._spectatorLakePos = { x: nx, y: ny };
-		applyLakeStageViewport(cfg.lakeStartSize, state.lake);
+		applyLakeStageViewport(cfg.lakeScaleStart, state.lake);
 		if (state.bg) {
 			drawInitialBackground();
 		}
@@ -195,7 +195,7 @@
 	}
 
 	function onNewFish(data) {
-		state.spectatorLakeScale = null;
+		state.savedLakeScale = null;
 		state.debugEnabled = data.debugEnabled === true;
 		state.gameGeneration = (state.gameGeneration || 0) + 1;
 		setupLakeWorld(data);
@@ -205,7 +205,7 @@
 		var color = createjs.Graphics.getHSL(hue, 100, 50);
 		state.myFish = new Fish(data.id, pos, [0, 0, 0, 0, 0], color, state.playerName, hue);
 
-		applyLakeStageViewport(state.myFish.lake_size, state.lake);
+		applyLakeStageViewport(state.myFish.lakeScale, state.lake);
 
 		state.localPlayActive = false;
 		ui.showTutorial();
@@ -222,7 +222,7 @@
 			}
 			if (state.debugEnabled && !state.myFish) {
 				debugDelaySamples = [];
-				ui.updateDebugPanel(undefined, 0);
+				ui.hideDebugPanels();
 			}
 			state.stage.update(event);
 			return;
@@ -241,17 +241,14 @@
 				state.stage.update(event);
 				return;
 			}
-			ls = fish.lake_size;
-			applyLakeStageViewport(ls, lake);
+			ls = fish.lakeScale;
 		} else {
 			if (state.bg) {
 				drawInitialBackground();
 			}
-			ls = (typeof state.spectatorLakeScale === "number" && state.spectatorLakeScale > 0)
-				? state.spectatorLakeScale
-				: cfg.lakeStartSize;
-			applyLakeStageViewport(ls, lake);
+			ls = state.savedLakeScale || cfg.lakeScaleStart;
 		}
+		applyLakeStageViewport(ls, lake);
 
 		var cw = state.stage.canvas.width;
 		var ch = state.stage.canvas.height;
@@ -322,10 +319,38 @@
 			var sum1s = 0;
 			for (var si = 0; si < debugDelaySamples.length; si++) sum1s += debugDelaySamples[si].v;
 			var avg1s = debugDelaySamples.length > 0 ? sum1s / debugDelaySamples.length : instantAvg;
-			ui.updateDebugPanel(delayCount > 0 ? avg1s : 0, delayCount, state.networkMode);
+			var transportName = (socket && socket.io && socket.io.engine && socket.io.engine.transport) ? socket.io.engine.transport.name : null;
+			ui.updateDebugLocalPanel({
+				life: fish.life,
+				time: fish.time,
+				size: fish.size,
+				scale: fish.scale,
+				maxLife: fish.maxLife,
+				lakeScale: fish.lakeScale
+			});
+			ui.updateDebugRemotePanel({
+				connected: !!(socket && socket.connected),
+				transport: transportName,
+				networkMode: state.networkMode,
+				avgDelayMs: delayCount > 0 ? avg1s : undefined,
+				fishCount: delayCount,
+				gameGeneration: state.gameGeneration || 0
+			});
+		} else if (state.debugEnabled) {
+			debugDelaySamples = [];
+			var transportNameNoFish = (socket && socket.io && socket.io.engine && socket.io.engine.transport) ? socket.io.engine.transport.name : null;
+			ui.updateDebugLocalPanel(null);
+			ui.updateDebugRemotePanel({
+				connected: !!(socket && socket.connected),
+				transport: transportNameNoFish,
+				networkMode: state.networkMode,
+				avgDelayMs: undefined,
+				fishCount: 0,
+				gameGeneration: state.gameGeneration || 0
+			});
 		} else {
 			debugDelaySamples = [];
-			ui.updateDebugPanel(undefined, 0);
+			ui.hideDebugPanels();
 		}
 
 		var sortable = [];
@@ -387,7 +412,7 @@
 		ui.showLeaderboardLoading();
 		network.emitFishDeath(socket, maxWeight);
 		state.playerName = null;
-		state.spectatorLakeScale = fish.lake_size;
+		state.savedLakeScale = fish.lakeScale;
 		state.myFish = null;
 		state.lake.vx = 0;
 		state.lake.vy = 0;
@@ -413,15 +438,15 @@
 		key.up("right", function() { if (state.myFish) state.myFish.right = false; return false; });
 		key.down("q", function() {
 			if (state.debugEnabled && state.myFish) {
-				state.myFish.life = Math.min(state.myFish.life + 30, state.myFish.max_life);
-				state.myFish.size_time += 10;
-				state.myFish.size_time = Math.min(state.myFish.size_time, cfg.fishEndLife);
+				state.myFish.life = Math.min(state.myFish.life + 30, state.myFish.maxLife);
+				state.myFish.size = Math.min(state.myFish.size * 1.1, cfg.fishSizeEnd);
 			}
+			console.log("Growing up to life " + state.myFish.life + " Growing up to maxLife " + state.myFish.maxLife + " Growing up to size " + state.myFish.size);
 			return false;
 		});
 		key.down("w", function() {
 			if (state.debugEnabled && state.myFish) {
-				state.myFish.size_time = Math.max(0, state.myFish.size_time - 10);
+				state.myFish.size = Math.max(state.myFish.size / 1.1, cfg.fishSizeStart);			
 			}
 			return false;
 		});

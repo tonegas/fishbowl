@@ -180,7 +180,7 @@
 	function sendFish(socket) {
 		var fish = state.myFish;
 		if (!fish) return;
-		var color = createjs.Graphics.getHSL(fish.color, fish.life / fish.max_life * 200 - 100, 50);
+		var color = createjs.Graphics.getHSL(fish.color, fish.life / fish.maxLife * 200 - 100, 50);
 		var payload = {
 			id: fish.id,
 			pos: fish.pos,

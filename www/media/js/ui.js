@@ -2,6 +2,7 @@
 
 (function (window) {
 	var state = window.Fishbowl;
+	var cfg = window.FishbowlConfig;
 
 	function formatWeight(w) {
 		if (w < 0.1) return (w * 1000).toFixed(1) + " g";
@@ -93,16 +94,50 @@
 		el.style.opacity = "";
 	}
 
-	function updateDebugPanel(avgDelayMs, fishCount, networkMode) {
-		var el = document.getElementById("debugPanel");
+	function updateDebugLocalPanel(data) {
+		var el = document.getElementById("debugPanelLocal");
 		if (!el) return;
-		if (avgDelayMs === undefined || fishCount === 0) {
+		if (!data) {
 			el.style.display = "none";
 			return;
 		}
-		var modeStr = (networkMode === "batch") ? "batch" : "emit";
-		el.textContent = "Debug | Ritardo medio: " + avgDelayMs.toFixed(1) + " ms | n=" + fishCount + " | " + modeStr;
+		el.textContent =
+			"Local debug\n" +
+			"life: " + data.life.toFixed(2) + "\n" +
+			"time: " + data.time.toFixed(2) + "\n" +
+			"size: " + data.size.toFixed(6) + " [" + cfg.fishSizeStart.toFixed(6) + " .. " + cfg.fishSizeEnd.toFixed(6) + "]\n" +
+			"scale: " + data.scale.toFixed(6) + " [0 .. 1]\n" +
+			"maxLife: " + data.maxLife.toFixed(2) + " [" + cfg.fishLifeStart.toFixed(2) + " .. " + cfg.fishLifeEnd.toFixed(2) + "]\n" +
+			"lakeScale: " + data.lakeScale.toFixed(6) + " [" + cfg.lakeScaleStart.toFixed(6) + " .. " + cfg.lakeScaleEnd.toFixed(6) + "]";
 		el.style.display = "block";
+	}
+
+	function updateDebugRemotePanel(data) {
+		var el = document.getElementById("debugPanelRemote");
+		if (!el) return;
+		if (!data) {
+			el.style.display = "none";
+			return;
+		}
+		var connectedStr = data.connected ? "connected" : "disconnected";
+		var modeStr = data.networkMode || "-";
+		var transportStr = data.transport || "-";
+		var avgDelayStr = (typeof data.avgDelayMs === "number") ? data.avgDelayMs.toFixed(1) + " ms" : "-";
+		el.textContent =
+			"Remote debug\n" +
+			"socket: " + connectedStr + "\n" +
+			"transport: " + transportStr + "\n" +
+			"networkMode: " + modeStr + "\n" +
+			"avgDelay: " + avgDelayStr + "\n" +
+			"peers: " + data.fishCount + "\n" +
+			"virtualDelay: " + cfg.virtualDelay + " ms\n" +
+			"generation: " + data.gameGeneration;
+		el.style.display = "block";
+	}
+
+	function hideDebugPanels() {
+		updateDebugLocalPanel(null);
+		updateDebugRemotePanel(null);
 	}
 
 	function hideTutorial() {
@@ -141,7 +176,9 @@
 		initNameOverlay: initNameOverlay,
 		showTutorial: showTutorial,
 		hideTutorial: hideTutorial,
-		updateDebugPanel: updateDebugPanel,
+		updateDebugLocalPanel: updateDebugLocalPanel,
+		updateDebugRemotePanel: updateDebugRemotePanel,
+		hideDebugPanels: hideDebugPanels,
 		formatWeight: formatWeight
 	};
 }(window));
