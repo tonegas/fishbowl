@@ -57,7 +57,7 @@
 
 		// Da che distanza riesce a mangiare un altro pesce
 		// Più è alto, più facile mangiare un altro pesce
-		eatFishDistanceFactor: 4,
+		eatFishDistanceFactor: 5,
 
 		// Da che distanza riesce a mangiare un altro pesce
 		// Più è alto, più facile mangiare del cibo
@@ -92,7 +92,7 @@
 
 		// Vita guadagnata quando mangi un altro pesce (scalata come sopra).
 		// Di solito molto più alto del cibo per premiare i combattimenti riusciti.
-		fishLifeGainFromFish: 5,
+		fishLifeGainFromFish: 50,
 
 		/* ---------- Altri pesci (client) ---------- */
 		// “Vita” degli altri pesci lato client per setAlive (secondi prima che spariscano senza aggiornamenti).
@@ -101,7 +101,7 @@
 
 		// Fattore 0–1 per smussare posizione e angoli degli altri pesci sul client (interpolazione).
 		// 1 = nessuno smoothing; valori bassi = movimento più morbido ma più “in ritardo” visivo.
-		otherFishSmooth: 0.25,
+		otherFishSmooth: 0.1,
 
 		/* ---------- Rete (server + client) ---------- */
 		// Path URL di Socket.IO lato client (deve combaciare con come monti il server).
@@ -114,7 +114,7 @@
 
 		// Soglia: con almeno così tanti pesci il server passa a invio a batch periodico invece che emit per pesce.
 		// Sotto soglia ogni stato viene inviato come singolo fish_to_client.
-		batchFishThreshold: 4,
+		batchFishThreshold: 5,
 
 		// Ritardo artificiale in millisecondi prima di applicare gli update di rete (solo debug/latenza simulata).
 		// 0 = nessun ritardo; valori > 0 ritardano fish_to_client / fish_batch sul client.
@@ -144,7 +144,7 @@
 		/* ---------- Loop di gioco (client) ---------- */
 		// Massimo delta tempo (secondi) usato in un singolo frame di simulazione (acqua, altri pesci, fisica locale).
 		// Evita salti enormi dopo pause tab; oltre questo valore il mondo avanza a step fissi per frame.
-		maxFrameDt: 0.1,
+		maxFrameDt: 0.05,
 
 		// Porta TCP se l’argomento da riga di comando non è un numero valido (solo processo server Node).
 		defaultServerPort: 9999
