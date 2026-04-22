@@ -338,6 +338,8 @@
 				fishCount: delayCount,
 				gameGeneration: state.gameGeneration || 0
 			});
+			var totalFish = 1 + ((lake && lake.otherFishId) ? lake.otherFishId.length : 0);
+			ui.updateDebugBitePanel(totalFish === 2 ? (state.debugFishBite || null) : null);
 		} else if (state.debugEnabled) {
 			debugDelaySamples = [];
 			var transportNameNoFish = (socket && socket.io && socket.io.engine && socket.io.engine.transport) ? socket.io.engine.transport.name : null;
@@ -350,6 +352,7 @@
 				fishCount: 0,
 				gameGeneration: state.gameGeneration || 0
 			});
+			ui.updateDebugBitePanel(null);
 		} else {
 			debugDelaySamples = [];
 			ui.hideDebugPanels();

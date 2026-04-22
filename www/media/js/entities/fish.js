@@ -252,15 +252,31 @@
 		var headD = preyDimS[0];
 		var tailSegmentRadius = Math.min(tailD.x, tailD.y) / 2 * prey.size;
 		var headDSegmentRadius = Math.min(headD.x, headD.y) / 2 * prey.size;
-		if (mouthRadius <= tailSegmentRadius) return;
 		var eatWhole = headDSegmentRadius < mouthRadius;
 		var dis;
+		var intersect = false;
+		var totalFish = 1 + ((state.lake && state.lake.otherFishId) ? state.lake.otherFishId.length : 0);
+		var debugBiteTwoFish = !!(state.debugEnabled && predator === state.myFish && totalFish === 2);
+		if (mouthRadius <= tailSegmentRadius) {
+			if (debugBiteTwoFish) {
+				state.debugFishBite = {
+					mouthRadius: mouthRadius,
+					tailSegmentRadius: tailSegmentRadius,
+					headDSegmentRadius: headDSegmentRadius,
+					eatWhole: eatWhole,
+					dis: null,
+					eatFishDistanceFactor: cfg.eatFishDistanceFactor,
+					intersect: false
+				};
+			}
+			return;
+		}
 		if (eatWhole) {
 			dis = Math.sqrt(
 				Math.pow(predator.mounth.x - prey.mounth.x, 2) + 
 				Math.pow(predator.mounth.y - prey.mounth.y, 2)
 			);
-			var intersect = dis < cfg.eatFishDistanceFactor * mouthRadius + headDSegmentRadius;
+			intersect = dis < cfg.eatFishDistanceFactor * mouthRadius + headDSegmentRadius;
 			if (intersect) {
 				if (prey === this) {
 					this.alive = false;
@@ -277,7 +293,7 @@
 				Math.pow(predator.mounth.x - prey.fin.x, 2) + 
 				Math.pow(predator.mounth.y - prey.fin.y, 2)
 			);
-			var intersect = dis < cfg.eatFishDistanceFactor * mouthRadius + tailSegmentRadius;
+			intersect = dis < cfg.eatFishDistanceFactor * mouthRadius + tailSegmentRadius;
 			if (intersect) {
 				prey.lastfin.visible = false;
 				prey.fishParts.nRPart -= 1;
@@ -289,6 +305,17 @@
 					this.addLifeGain(prey.size, "fish");
 				}
 			}
+		}
+		if (debugBiteTwoFish) {
+			state.debugFishBite = {
+				mouthRadius: mouthRadius,
+				tailSegmentRadius: tailSegmentRadius,
+				headDSegmentRadius: headDSegmentRadius,
+				eatWhole: eatWhole,
+				dis: dis,
+				eatFishDistanceFactor: cfg.eatFishDistanceFactor,
+				intersect: intersect
+			};
 		}
 		if (dis < cfg.chaseDistanceFactor * predator.size) {
 			this.look_target = (predator === this) ? { x: prey.fin.x, y: prey.fin.y } : { x: predator.mounth.x, y: predator.mounth.y };
@@ -548,6 +575,9 @@
 			this.fishParts.cont[0].x = pos.x;
 			this.fishParts.cont[0].y = pos.y;
 			this.updateMouthFin();
+		}
+		if (typeof size === "number" && isFinite(size) && size > 0) {
+			this.size = size;
 		}
 		this.fishParts.cont[0].scaleX = size;
 		this.fishParts.cont[0].scaleY = size;

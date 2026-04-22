@@ -136,9 +136,31 @@
 		el.style.display = "block";
 	}
 
+	function updateDebugBitePanel(data) {
+		var el = document.getElementById("debugPanelBite");
+		if (!el) return;
+		if (!data) {
+			el.style.display = "none";
+			return;
+		}
+		var disStr = (typeof data.dis === "number" && isFinite(data.dis)) ? data.dis.toFixed(3) : "-";
+		var intersectStr = (typeof data.intersect === "boolean") ? data.intersect : "-";
+		el.textContent =
+			"Bite debug (2 fish)\n" +
+			"mouthRadius: " + data.mouthRadius.toFixed(3) + "\n" +
+			"tailSegmentRadius: " + data.tailSegmentRadius.toFixed(3) + "\n" +
+			"headDSegmentRadius: " + data.headDSegmentRadius.toFixed(3) + "\n" +
+			"eatWhole: " + data.eatWhole + "\n" +
+			"dis: " + disStr + "\n" +
+			"eatFishDistanceFactor: " + data.eatFishDistanceFactor.toFixed(3) + "\n" +
+			"intersect: " + intersectStr;
+		el.style.display = "block";
+	}
+
 	function hideDebugPanels() {
 		updateDebugLocalPanel(null);
 		updateDebugRemotePanel(null);
+		updateDebugBitePanel(null);
 	}
 
 	function hideTutorial() {
@@ -179,6 +201,7 @@
 		hideTutorial: hideTutorial,
 		updateDebugLocalPanel: updateDebugLocalPanel,
 		updateDebugRemotePanel: updateDebugRemotePanel,
+		updateDebugBitePanel: updateDebugBitePanel,
 		hideDebugPanels: hideDebugPanels,
 		formatWeight: formatWeight
 	};

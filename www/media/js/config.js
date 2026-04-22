@@ -99,7 +99,7 @@
 
 		// Vita guadagnata quando mangi un altro pesce (scalata come sopra).
 		// Di solito molto più alto del cibo per premiare i combattimenti riusciti.
-		fishLifeGainFromFish: 10,
+		fishLifeGainFromFish: 50,
 
 		/* ---------- Altri pesci (client) ---------- */
 		// “Vita” degli altri pesci lato client per setAlive (secondi prima che spariscano senza aggiornamenti).
@@ -184,7 +184,8 @@
 			debugEnabled: false,
 			gameGeneration: 0,
 			localPlayActive: false,
-			savedLakeScale: null
+			savedLakeScale: null,
+			debugFishBite: null
 		};
 	}
 }(typeof window !== "undefined" ? window : global));
