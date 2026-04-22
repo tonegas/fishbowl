@@ -104,10 +104,11 @@
 		el.textContent =
 			"Local debug\n" +
 			"life: " + data.life.toFixed(2) + "\n" +
+			"lifeGain: " + data.lifeGain.toFixed(2) + "\n" +
+			"gainWeight: x" + Math.floor(data.gainWeight || 1) + "\n" +
 			"time: " + data.time.toFixed(2) + "\n" +
 			"size: " + data.size.toFixed(6) + " [" + cfg.fishSizeStart.toFixed(6) + " .. " + cfg.fishSizeEnd.toFixed(6) + "]\n" +
 			"scale: " + data.scale.toFixed(6) + " [0 .. 1]\n" +
-			"maxLife: " + data.maxLife.toFixed(2) + " [" + cfg.fishLifeStart.toFixed(2) + " .. " + cfg.fishLifeEnd.toFixed(2) + "]\n" +
 			"lakeScale: " + data.lakeScale.toFixed(6) + " [" + cfg.lakeScaleStart.toFixed(6) + " .. " + cfg.lakeScaleEnd.toFixed(6) + "]";
 		el.style.display = "block";
 	}

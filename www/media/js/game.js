@@ -326,7 +326,8 @@
 				time: fish.time,
 				size: fish.size,
 				scale: fish.scale,
-				maxLife: fish.maxLife,
+				lifeGain: fish.lifeGain,
+				gainWeight: fish.gainWeight,
 				lakeScale: fish.lakeScale
 			});
 			ui.updateDebugRemotePanel({
@@ -441,7 +442,7 @@
 			if (state.debugEnabled && state.myFish) {
 				state.myFish.addLifeGain(0.02, "fish")
 			}
-			console.log("Growing up to life " + state.myFish.life + " Growing up to maxLife " + state.myFish.maxLife + " Growing up to size " + state.myFish.size);
+			console.log("Growing up to life " + state.myFish.life + " lifeGain " + state.myFish.lifeGain + " gainWeight x" + state.myFish.gainWeight + " Growing up to size " + state.myFish.size);
 			return false;
 		});
 		key.down("w", function() {
