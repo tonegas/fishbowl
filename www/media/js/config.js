@@ -77,7 +77,7 @@
 		/* ---------- Pesce locale: vita e crescita ---------- */
 		// Periodo (secondi) in cui la massa del pesce raddoppia se la crescita è attiva (vedi fish.update: usa size³ e exp/ln).
 		// Con fishSizeStart da 5 mg e crescita continua: timeToDouble = 204 → ~1 h per ~1000 g; timeToDouble = 408 → ~2 h.
-		timeToDouble: 250,
+		timeToDouble: 400,
 
 		// Vita iniziale del tuo pesce, in secondi di simulazione (fish.update fa life -= dt; dt è in secondi).
 		// Finché il tutorial blocca la simulazione (simDt = 0) la vita non scende; non sono tick del Ticker.
@@ -90,9 +90,16 @@
 		// Valori alti rendono il recupero per fame molto generoso.
 		fishLifeGainFromFood: 5,
 
+		// Tempo (secondi) di "buffer crescita": quando life supera maxLife, il surplus utile è max growingTime.
+		// In pratica il pesce cresce finché ha vita extra > 0, con barra extra piena a life = maxLife + growingTime.
+		growingTime: 10,
+
+		// Moltiplicatore massimo mostrato come xN e applicato alla velocità di crescita.
+		maxGainWeight: 10,
+
 		// Vita guadagnata quando mangi un altro pesce (scalata come sopra).
 		// Di solito molto più alto del cibo per premiare i combattimenti riusciti.
-		fishLifeGainFromFish: 50,
+		fishLifeGainFromFish: 10,
 
 		/* ---------- Altri pesci (client) ---------- */
 		// “Vita” degli altri pesci lato client per setAlive (secondi prima che spariscano senza aggiornamenti).

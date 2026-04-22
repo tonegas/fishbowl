@@ -24,6 +24,10 @@
 		this.time = 0;
 		this.maxLife = cfg.fishLifeStart;
 		this.life = cfg.fishLifeStart;
+		this.lifeGain = this.life;
+		this.gainWeight = 1;
+		this._lastGainMulShown = 1;
+		this._gainMulPulseT = 0;
 		this.size = cfg.fishSizeStart;
 		this.lakeScale = cfg.lakeScaleStart;
 		this.scale = 0;
@@ -160,6 +164,14 @@
 		this.infoWeight.y = hudTop + 22;
 		this.infoWeight.visible = hudLocal;
 		this.infoWeight.shadow = new createjs.Shadow("rgba(0,28,48,0.88)", 0, 1, 3);
+		this.infoGrowthArrow = new createjs.Text("↑", "700 12px Fredoka,Arial,sans-serif", "#fef3c7");
+		this.infoGrowthArrow.textAlign = "right";
+		this.infoGrowthArrow.visible = false;
+		this.infoGrowthArrow.shadow = new createjs.Shadow("rgba(0,28,48,0.88)", 0, 1, 3);
+		this.infoGainMul = new createjs.Text("", "700 11px Fredoka,Arial,sans-serif", "#fef3c7");
+		this.infoGainMul.textAlign = "right";
+		this.infoGainMul.visible = false;
+		this.infoGainMul.shadow = new createjs.Shadow("rgba(0,28,48,0.88)", 0, 1, 3);
 		if (hudLocal) {
 			this._lifeBarW = 148;
 			this._lifeBarH = 7;
@@ -168,14 +180,27 @@
 			this.lifeBarFill = new createjs.Shape();
 			this.lifeBarFill.regX = 0;
 			this.lifeBarFill.regY = 0;
+			this._growthBarW = 54;
+			this._growthBarH = 6;
+			this._growthBarGap = 6;
+			this.growthBarBg = new createjs.Shape();
+			this.growthBarFill = new createjs.Shape();
+			this.growthBarBg.visible = false;
+			this.growthBarFill.visible = false;
 			stage.addChild(this.lifeBarBg);
 			stage.addChild(this.lifeBarFill);
+			stage.addChild(this.growthBarBg);
+			stage.addChild(this.growthBarFill);
 		} else {
 			this.lifeBarBg = null;
 			this.lifeBarFill = null;
+			this.growthBarBg = null;
+			this.growthBarFill = null;
 		}
 		stage.addChild(this.infoName);
 		stage.addChild(this.infoWeight);
+		stage.addChild(this.infoGrowthArrow);
+		stage.addChild(this.infoGainMul);
 
 		this.set(this.ctp, this.pos, this.size, createjs.Graphics.getHSL(this.color, this.life / this.maxLife * 200 - 100, 50), lake);
 	}
@@ -211,6 +236,11 @@
 	Fish.prototype.addLifeGain = function(consumedSize, gainType) {
 		var gain = (consumedSize / this.size) * (gainType === "fish" ? cfg.fishLifeGainFromFish : cfg.fishLifeGainFromFood);
 		this.life += gain;
+		if(this.life > this.maxLife + cfg.growingTime){
+			this.life = this.maxLife + cfg.growingTime;
+		}
+		this.lifeGain += gain;
+		this.gainWeight = Math.min(cfg.maxGainWeight, Math.max(1, Math.floor(this.lifeGain / Math.max(1e-6, this.maxLife))));
 	};
 
 	Fish.prototype.bite = function(predator, prey) {
@@ -383,20 +413,24 @@
 			lake.y = Math.max(-halfLake, Math.min(halfLake, lake.y));
 		}
 
-		this.life -= dt;
+		
+
+		this.life -= dt * (1 + this.scale * (fishLifeStart / fishLifeEnd - 1));
 		this.time += dt;
 		if(this.life > this.maxLife) {
-			var timeToDouble = cfg.timeToDouble;
+			var growthMul = Math.max(1, this.gainWeight || 1);
+			var timeToDouble = cfg.timeToDouble / growthMul;
 			var sizeQ = Math.pow(this.size, 3);
 			var x = timeToDouble / Math.log(2) * Math.log(sizeQ / Math.pow(cfg.fishSizeStart, 3));
 			var y = Math.pow(cfg.fishSizeStart,3) * Math.exp(Math.log(2) / timeToDouble * (x + dt));
 			this.size = Math.min(Math.pow(y, 1/3), cfg.fishSizeEnd);
+		}else{
+			this.lifeGain = this.life;
+			this.gainWeight = 1;
 		}
 
-		var scale = (this.size - fishSizeStart) /(fishSizeEnd - fishSizeStart);
-		this.scale = scale;
-		this.maxLife =  fishLifeStart + (fishLifeEnd - fishLifeStart) * scale;
-		this.lakeScale = 1.0/(1.0/lakeScaleStart * (1 - scale) + scale * 1.0/lakeScaleEnd);
+		this.scale = (this.size - fishSizeStart) /(fishSizeEnd - fishSizeStart);
+		this.lakeScale = 1.0/(1.0/lakeScaleStart * (1 - this.scale) + this.scale * 1.0/lakeScaleEnd);
 
 		var num = Math.pow(this.size, 3) * 100;
 		if (num > this.max_weight) this.max_weight = num;
@@ -587,8 +621,12 @@
 		state.stage.removeChild(this.nameLabel);
 		if (this.lifeBarBg) state.stage.removeChild(this.lifeBarBg);
 		if (this.lifeBarFill) state.stage.removeChild(this.lifeBarFill);
+		if (this.growthBarBg) state.stage.removeChild(this.growthBarBg);
+		if (this.growthBarFill) state.stage.removeChild(this.growthBarFill);
 		state.stage.removeChild(this.infoName);
 		state.stage.removeChild(this.infoWeight);
+		state.stage.removeChild(this.infoGrowthArrow);
+		state.stage.removeChild(this.infoGainMul);
 		state.lakeStage.removeChild(this.fishParts.cont[0]);
 		this.alive = false;
 	};
@@ -603,6 +641,7 @@
 		this.infoWeight.x = hx;
 		this.infoWeight.y = hy + 22;
 		this.positionLifeBarBesideName(hx, hy);
+		this.positionGrowthHudBesideWeight(hx, hy);
 	};
 
 	Fish.prototype.positionLifeBarBesideName = function(hx, hy) {
@@ -619,6 +658,38 @@
 		this.lifeBarBg.y = barTop;
 		this.lifeBarFill.x = barLeft;
 		this.lifeBarFill.y = barTop;
+	};
+
+	Fish.prototype.positionGrowthHudBesideWeight = function(hx, hy) {
+		var weightW = (typeof this.infoWeight.getMeasuredWidth === "function")
+			? this.infoWeight.getMeasuredWidth()
+			: (this.infoWeight.getBounds ? this.infoWeight.getBounds().width : 70);
+		weightW = Math.max(weightW, 6);
+		var right = hx - weightW - 8;
+		var rowY = hy + 22;
+		var gapArrowBar = 3;
+		var gapArrowMul = 4;
+		var gapMulBar = 8;
+		if (this.infoGrowthArrow) {
+			this.infoGrowthArrow.x = right;
+			this.infoGrowthArrow.y = rowY;
+			right -= 16;
+		}
+		if (this.growthBarBg && this.growthBarFill) {
+			var gw = this._growthBarW || 54;
+			var gh = this._growthBarH || 6;
+			var barLeft = right - gw - gapMulBar + 10;
+			var barTop = rowY + Math.max(1, Math.floor((12 - gh) / 2)) + 2;
+			this.growthBarBg.x = barLeft;
+			this.growthBarBg.y = barTop;
+			this.growthBarFill.x = barLeft;
+			this.growthBarFill.y = barTop;
+			right = barLeft - gapArrowMul;
+		}
+		if (this.infoGainMul) {
+			this.infoGainMul.x = right;
+			this.infoGainMul.y = rowY;
+		}
 	};
 
 	Fish.prototype.refreshLocalLifeBar = function(dt) {
@@ -639,6 +710,7 @@
 		var hx = (state.stage.canvas.width / 2) - 12;
 		var hy = -(state.stage.canvas.height / 2) + 10;
 		this.positionLifeBarBesideName(hx, hy);
+		this.positionGrowthHudBesideWeight(hx, hy);
 
 		var gBg = this.lifeBarBg.graphics;
 		var gFill = this.lifeBarFill.graphics;
@@ -688,6 +760,71 @@
 			this.lifeBarFill.alpha = 1;
 			this.lifeBarBg.alpha = 1;
 			this.lifeBarFill.shadow = null;
+		}
+
+		var growCap = Math.max(1e-6, cfg.growingTime || 0);
+		var growExcess = Math.max(0, this.life - this.maxLife);
+		var growRatio = Math.max(0, Math.min(1, growExcess / growCap));
+		var showGrowArrow = growExcess > 1e-4;
+		var mulValue = Math.max(1, Math.floor(this.gainWeight || 1));
+		var showGainMul = mulValue > 1;
+		if (mulValue !== this._lastGainMulShown) {
+			if (mulValue > 1) {
+				this._gainMulPulseT = 0.28;
+			}
+			this._lastGainMulShown = mulValue;
+		}
+		if (this._gainMulPulseT > 0) {
+			this._gainMulPulseT = Math.max(0, this._gainMulPulseT - (dt || 0));
+		}
+		var pulseArrow = 0.5 + 0.5 * Math.sin(tSec * 6.283 * 1.6);
+		if (this.infoGrowthArrow) {
+			this.infoGrowthArrow.visible = showGrowArrow;
+			this.infoGrowthArrow.alpha = showGrowArrow ? (0.55 + 0.45 * pulseArrow) : 0;
+			this.infoGrowthArrow.scaleX = this.infoGrowthArrow.scaleY = showGrowArrow ? (0.9 + 0.22 * pulseArrow) : 1;
+		}
+		if (this.infoGainMul) {
+			this.infoGainMul.visible = showGainMul;
+			this.infoGainMul.text = showGainMul ? ("x" + mulValue) : "";
+			if (showGainMul) {
+				var pulseProg = 1 - (this._gainMulPulseT / 0.28);
+				pulseProg = Math.max(0, Math.min(1, pulseProg));
+				var bump = Math.sin(pulseProg * Math.PI);
+				this.infoGainMul.alpha = 0.9 + 0.1 * bump;
+				this.infoGainMul.scaleX = this.infoGainMul.scaleY = 1 + 0.26 * bump;
+			} else {
+				this.infoGainMul.alpha = 0;
+				this.infoGainMul.scaleX = this.infoGainMul.scaleY = 1;
+			}
+		}
+		if (this.growthBarBg && this.growthBarFill) {
+			var g2Bg = this.growthBarBg.graphics;
+			var g2Fill = this.growthBarFill.graphics;
+			var gw = this._growthBarW || 54;
+			var gh = this._growthBarH || 6;
+			g2Bg.clear();
+			g2Fill.clear();
+			if (showGrowArrow) {
+				this.growthBarBg.visible = true;
+				this.growthBarFill.visible = true;
+				g2Bg.beginFill("rgba(50,14,14,0.52)").drawRoundRect(0, 0, gw, gh, 3).endFill();
+				g2Bg.beginStroke("rgba(255,190,130,0.55)").setStrokeStyle(1).drawRoundRect(0, 0, gw, gh, 3).endStroke();
+				var fill2W = growRatio > 0 ? Math.max(1, Math.round(gw * growRatio)) : 0;
+				if (fill2W > 0) {
+					/* Scarica da sinistra a destra: il pieno resta ancorato a destra. */
+					var fill2X = gw - fill2W;
+					g2Fill.beginLinearGradientFill(
+						["#ef4444", "#f97316", "#f59e0b"],
+						[0, 0.6, 1],
+						fill2X, 0, fill2X + fill2W, 0
+					).drawRoundRect(fill2X, 0, fill2W, gh, 2).endFill();
+				}
+				var p2 = 0.75 + 0.25 * pulseArrow;
+				this.growthBarFill.alpha = p2;
+			} else {
+				this.growthBarBg.visible = false;
+				this.growthBarFill.visible = false;
+			}
 		}
 		this.lifeBarFill.scaleX = 1;
 		this.lifeBarFill.scaleY = 1;

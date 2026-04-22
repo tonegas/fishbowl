@@ -439,8 +439,7 @@
 		key.up("right", function() { if (state.myFish) state.myFish.right = false; return false; });
 		key.down("q", function() {
 			if (state.debugEnabled && state.myFish) {
-				state.myFish.life = Math.min(state.myFish.life + 30, state.myFish.maxLife);
-				state.myFish.size = Math.min(state.myFish.size * 1.1, cfg.fishSizeEnd);
+				state.myFish.addLifeGain(0.02, "fish")
 			}
 			console.log("Growing up to life " + state.myFish.life + " Growing up to maxLife " + state.myFish.maxLife + " Growing up to size " + state.myFish.size);
 			return false;
