@@ -17,12 +17,14 @@
 	}
 
 	/** Stesso aggiornamento pesci remoti su tutte le schermate (nome, tutorial, leaderboard, gioco). */
-	function advanceOtherFish(lake, worldDt, now, vxMin, vxMax, vyMin, vyMax, myFish, localPlayActive) {
+	function advanceOtherFish(lake, worldDt, now, vxMin, vxMax, vyMin, vyMax, myView, localPlayActive) {
 		var toRemove = [];
 		var i;
+		var mySim = myView ? myView.sim : null;
 		for (i = 0; i < lake.otherFishId.length; i++) {
 			var other = lake.otherFish[lake.otherFishId[i]];
 			if (!other) continue;
+			var oSim = other.sim;
 			var root = other.fishParts && other.fishParts.cont && other.fishParts.cont[0];
 			if (root && other._lastPos && other._lastVelocity && other._lastUpdateTime !== undefined) {
 				var ext = Math.min(now - other._lastUpdateTime, 0.15);
@@ -36,9 +38,10 @@
 					root.x = targetX;
 					root.y = targetY;
 				}
-				other.updateMouthFin();
+				oSim.pos.x = root.x;
+				oSim.pos.y = root.y;
 			}
-			if (other._displayCtp && other._targetCtp && other._colorStr) {
+			if (other._displayCtp && other._targetCtp) {
 				var ctpSmooth = cfg.otherFishSmooth;
 				var tc = other._targetCtp;
 				var dc = other._displayCtp;
@@ -56,23 +59,21 @@
 						}
 					}
 				}
-				other.drawFish(other._displayCtp, other._colorStr);
 			}
-			if (other.look_target && other.updatePupils) {
-				other.updatePupils();
-			}
-			if (myFish) {
-				other.updateRemotePlayerLabels(myFish, lake);
+			other.sync(worldDt);
+			if (myView) {
+				other.updateRemotePlayerLabels(myView, lake);
 			}
 			if (root) {
 				var ox = root.x, oy = root.y;
 				root.visible = (ox >= vxMin && ox <= vxMax && oy >= vyMin && oy <= vyMax);
 			}
-			if (myFish && localPlayActive) {
-				myFish.bite(myFish, other);
-				if (other.alive) myFish.bite(other, myFish);
+			if (mySim && localPlayActive) {
+				mySim.bite(mySim, oSim);
+				if (oSim.alive) mySim.bite(oSim, mySim);
 			}
-			if (other.setAlive(-worldDt) === false) {
+			if (oSim.setAlive(-worldDt) === false) {
+				other.die();
 				toRemove.push(lake.otherFishId[i]);
 			}
 		}
@@ -82,18 +83,15 @@
 		lake.otherFishId = _.difference(lake.otherFishId, toRemove);
 	}
 
-	function drawInitialBackground() {
+	function drawBackground(lake, ls) {
 		var halfLake = cfg.lakeSize / 2;
-		var ls = cfg.lakeScaleStart;
-		var lake = { x: 0, y: 0 };
 		var lakeLeft = (-halfLake - lake.x) * ls;
 		var lakeRight = (halfLake - lake.x) * ls;
 		var lakeTop = (-halfLake - lake.y) * ls;
 		var lakeBottom = (halfLake - lake.y) * ls;
 		var sx = state.stage.x;
 		var sy = state.stage.y;
-		state.bg.graphics.clear();
-		state.bg.graphics.beginFill("#888899").drawRect(-sx, -sy, state.stage.canvas.width, state.stage.canvas.height).endFill();
+		state.bg.graphics.clear().beginFill("#888899").drawRect(-sx, -sy, state.stage.canvas.width, state.stage.canvas.height).endFill();
 		var drawL = Math.max(lakeLeft, -sx);
 		var drawR = Math.min(lakeRight, sx);
 		var drawT = Math.max(lakeTop, -sy);
@@ -102,6 +100,7 @@
 			state.bg.graphics.beginLinearGradientFill(["#77F", "#113"], [0, 1], drawL, lakeTop, drawL, lakeBottom).drawRect(drawL, drawT, drawR - drawL, drawB - drawT).endFill();
 		}
 	}
+	function drawInitialBackground() { drawBackground({ x: 0, y: 0 }, cfg.lakeScaleStart); }
 
 	function init(socket, loader) {
 		state.loader = loader;
@@ -155,8 +154,10 @@
 			var ly = cy + (Math.random() * 2 - 1) * foodSpawnRadius;
 			lx = Math.max(-halfLake + 1, Math.min(halfLake - 1, lx));
 			ly = Math.max(-halfLake + 1, Math.min(halfLake - 1, ly));
-			state.lake.mObject[j] = new Food(size, lx, ly);
-			state.lakeStage.addChildAt(state.lake.mObject[j], 0);
+			var foodSim = new FoodSim(size, lx, ly);
+			var foodView = new FoodView(foodSim);
+			state.lake.mObject[j] = foodView;
+			state.lakeStage.addChildAt(foodView.shape, 0);
 		}
 		state.lakeStage.addChild(state.waterSurface.shape);
 		state.lakeStage.addChild(state.lakeBorder.shape);
@@ -202,11 +203,12 @@
 
 		var pos = data.pos;
 		var hue = Math.ceil(Math.random() * 360);
-		var color = createjs.Graphics.getHSL(hue, 100, 50);
-		state.myFish = new Fish(data.id, pos, [0, 0, 0, 0, 0], color, state.playerName, hue);
+		var sim = new FishSim(data.id, pos, [0, 0, 0, 0, 0], state.playerName, hue);
+		state.myFish = new FishView(sim, true);
+		state.mySim = sim;
 		resize();
 
-		applyLakeStageViewport(state.myFish.lakeScale, state.lake);
+		applyLakeStageViewport(sim.lakeScale, state.lake);
 
 		state.localPlayActive = false;
 		ui.showTutorial();
@@ -230,19 +232,23 @@
 		}
 
 		var fish = state.myFish;
+		var sim = fish ? fish.sim : null;
 		var lake = state.lake;
 		var worldDt = clampFrameDelta(dt);
 
 		var ls;
-		if (fish) {
+		if (sim) {
 			var simDt = state.localPlayActive ? worldDt : 0;
-			fish._mouthOpen = false;
-			if (!fish.update(simDt, lake)) {
+			sim._mouthOpen = false;
+			if (!sim.update(simDt, lake)) {
 				handleFishDeath(socket);
 				state.stage.update(event);
 				return;
 			}
-			ls = fish.lakeScale;
+			ls = sim.lakeScale;
+			drawBackground(lake, ls);
+			/* Allinea cont[0] e mounth/fin a sim.pos PRIMA di eat/bite, come Fish.update originale (che chiamava set→updateMouthFin in coda all'update). */
+			fish.syncTransform();
 		} else {
 			if (state.bg) {
 				drawInitialBackground();
@@ -271,136 +277,81 @@
 			state.waterSurface.draw(lake, ls, worldDt);
 		}
 		if (state.lakeBorder) {
-			state.lakeBorder.draw(lake, ls, fish || null);
+			state.lakeBorder.draw(lake, ls, sim || null);
 		}
 
-		if (fish) {
-			var foodToRemove = [];
-			_.each(lake.mObject, function(obj) {
-				if (obj.size < fish.size / 2.0) {
-					state.lakeStage.removeChild(obj);
-					foodToRemove.push(obj);
-				} else {
-					obj.update(event, lake.x, lake.y);
-					obj.visible = (obj.x >= vxMin && obj.x <= vxMax && obj.y >= vyMin && obj.y <= vyMax);
-					if (state.localPlayActive) {
-						fish.eat(obj);
-					}
-				}
-			});
-			if (foodToRemove.length) {
-				lake.mObject = _.difference(lake.mObject, foodToRemove);
+		var foodToRemove = [];
+		_.each(lake.mObject, function(food) {
+			if (sim && food.sim.size < sim.size / 2.0) {
+				state.lakeStage.removeChild(food.shape);
+				foodToRemove.push(food);
+				return;
 			}
-		} else {
-			_.each(lake.mObject, function(obj) {
-				obj.update(event, lake.x, lake.y);
-				obj.visible = (obj.x >= vxMin && obj.x <= vxMax && obj.y >= vyMin && obj.y <= vyMax);
-			});
-		}
+			food.sim.update(lake.x, lake.y);
+			food.sync();
+			food.shape.visible = (food.sim.x >= vxMin && food.sim.x <= vxMax && food.sim.y >= vyMin && food.sim.y <= vyMax);
+			if (sim && state.localPlayActive) sim.eat(food.sim);
+		});
+		if (foodToRemove.length) lake.mObject = _.difference(lake.mObject, foodToRemove);
 
 		var now = (typeof performance !== "undefined" && performance.now) ? performance.now() / 1000 : Date.now() / 1000;
 		advanceOtherFish(lake, worldDt, now, vxMin, vxMax, vyMin, vyMax, fish, state.localPlayActive);
 
-		if (state.debugEnabled && fish) {
-			var delaySum = 0;
-			var delayCount = 0;
+		if (sim) {
+			fish.sync(worldDt);
+		}
+
+		if (state.debugEnabled) {
+			var delaySum = 0, delayCount = 0;
 			for (var di = 0; di < lake.otherFishId.length; di++) {
 				var oth = lake.otherFish[lake.otherFishId[di]];
-				if (oth && oth._lastUpdateTime !== undefined) {
-					delaySum += (now - oth._lastUpdateTime) * 1000;
-					delayCount++;
-				}
+				if (oth && oth._lastUpdateTime !== undefined) { delaySum += (now - oth._lastUpdateTime) * 1000; delayCount++; }
 			}
 			var instantAvg = delayCount > 0 ? delaySum / delayCount : 0;
-			debugDelaySamples.push({ t: now, v: instantAvg });
-			var cutoff = now - 1;
-			while (debugDelaySamples.length > 0 && debugDelaySamples[0].t < cutoff) {
-				debugDelaySamples.shift();
+			if (sim) {
+				debugDelaySamples.push({ t: now, v: instantAvg });
+				while (debugDelaySamples.length > 0 && debugDelaySamples[0].t < now - 1) debugDelaySamples.shift();
+				var sum1s = 0;
+				for (var si = 0; si < debugDelaySamples.length; si++) sum1s += debugDelaySamples[si].v;
+				instantAvg = debugDelaySamples.length > 0 ? sum1s / debugDelaySamples.length : instantAvg;
+			} else {
+				debugDelaySamples = [];
 			}
-			var sum1s = 0;
-			for (var si = 0; si < debugDelaySamples.length; si++) sum1s += debugDelaySamples[si].v;
-			var avg1s = debugDelaySamples.length > 0 ? sum1s / debugDelaySamples.length : instantAvg;
-			var transportName = (socket && socket.io && socket.io.engine && socket.io.engine.transport) ? socket.io.engine.transport.name : null;
-			ui.updateDebugLocalPanel({
-				life: fish.life,
-				time: fish.time,
-				size: fish.size,
-				scale: fish.scale,
-				lifeGain: fish.lifeGain,
-				gainWeight: fish.gainWeight,
-				lakeScale: fish.lakeScale
-			});
-			ui.updateDebugRemotePanel({
-				connected: !!(socket && socket.connected),
-				transport: transportName,
-				networkMode: state.networkMode,
-				avgDelayMs: delayCount > 0 ? avg1s : undefined,
-				fishCount: delayCount,
-				gameGeneration: state.gameGeneration || 0
-			});
+			var transport = (socket && socket.io && socket.io.engine && socket.io.engine.transport) ? socket.io.engine.transport.name : null;
+			ui.updateDebugLocalPanel(sim ? { life: sim.life, time: sim.time, size: sim.size, scale: sim.scale, lifeGain: sim.lifeGain, gainWeight: sim.gainWeight, lakeScale: sim.lakeScale } : null);
+			ui.updateDebugRemotePanel({ connected: !!(socket && socket.connected), transport: transport, networkMode: state.networkMode, avgDelayMs: (sim && delayCount > 0) ? instantAvg : undefined, fishCount: sim ? delayCount : 0, gameGeneration: state.gameGeneration || 0 });
 			var totalFish = 1 + ((lake && lake.otherFishId) ? lake.otherFishId.length : 0);
-			ui.updateDebugBitePanel(totalFish === 2 ? (state.debugFishBite || null) : null);
-		} else if (state.debugEnabled) {
-			debugDelaySamples = [];
-			var transportNameNoFish = (socket && socket.io && socket.io.engine && socket.io.engine.transport) ? socket.io.engine.transport.name : null;
-			ui.updateDebugLocalPanel(null);
-			ui.updateDebugRemotePanel({
-				connected: !!(socket && socket.connected),
-				transport: transportNameNoFish,
-				networkMode: state.networkMode,
-				avgDelayMs: undefined,
-				fishCount: 0,
-				gameGeneration: state.gameGeneration || 0
-			});
-			ui.updateDebugBitePanel(null);
+			ui.updateDebugBitePanel((sim && totalFish === 2) ? (state.debugFishBite || null) : null);
 		} else {
 			debugDelaySamples = [];
 			ui.hideDebugPanels();
 		}
 
 		var sortable = [];
-		if (fish) {
-			sortable.push({ obj: fish.fishParts.cont[0], depth: 1000 + fish.size * cfg.mouthSizeFactor/2 });
-		}
+		if (sim) sortable.push({ obj: fish.fishParts.cont[0], depth: 1000 + sim.size * cfg.mouthSizeFactor / 2 });
 		_.each(lake.otherFishId, function(id) {
-			var o = lake.otherFish[id];
-			if (o && o.fishParts && o.fishParts.cont && o.fishParts.cont[0] && state.lakeStage.getChildIndex(o.fishParts.cont[0]) >= 0) {
-				sortable.push({ obj: o.fishParts.cont[0], depth: 1000 + o.size });
-			}
+			var v = lake.otherFish[id];
+			if (v && v.fishParts.cont[0] && state.lakeStage.getChildIndex(v.fishParts.cont[0]) >= 0) sortable.push({ obj: v.fishParts.cont[0], depth: 1000 + v.sim.size });
 		});
-		_.each(lake.mObject, function(obj) {
-			if (state.lakeStage.getChildIndex(obj) >= 0) {
-				sortable.push({ obj: obj, depth: obj.size });
-			}
+		_.each(lake.mObject, function(food) {
+			if (state.lakeStage.getChildIndex(food.shape) >= 0) sortable.push({ obj: food.shape, depth: food.sim.size });
 		});
-		for (i = 0; i < lake.fObject.N; i++) {
-			sortable.push({ obj: lake.fObject.list[i], depth: 1000 + lake.fObject.list[i].scaleX });
-		}
+		for (i = 0; i < lake.fObject.N; i++) sortable.push({ obj: lake.fObject.list[i], depth: 1000 + lake.fObject.list[i].scaleX });
 		sortable.sort(function(a, b) { return a.depth - b.depth; });
 		var order = [];
-		if (state.lakeBorder && state.lakeBorder.innerLineShape) {
-			order.push(state.lakeBorder.innerLineShape);
-		}
-		for (i = 0; i < sortable.length; i++) {
-			order.push(sortable[i].obj);
-		}
-		if (state.waterSurface && state.waterSurface.shape) {
-			order.push(state.waterSurface.shape);
-		}
-		if (state.lakeBorder && state.lakeBorder.shape) {
-			order.push(state.lakeBorder.shape);
-		}
+		if (state.lakeBorder && state.lakeBorder.innerLineShape) order.push(state.lakeBorder.innerLineShape);
+		for (i = 0; i < sortable.length; i++) order.push(sortable[i].obj);
+		if (state.waterSurface && state.waterSurface.shape) order.push(state.waterSurface.shape);
+		if (state.lakeBorder && state.lakeBorder.shape) order.push(state.lakeBorder.shape);
 		for (i = 0; i < order.length; i++) {
-			if (state.lakeStage.getChildIndex(order[i]) >= 0) {
-				state.lakeStage.setChildIndex(order[i], i);
-			}
+			if (state.lakeStage.getChildIndex(order[i]) >= 0) state.lakeStage.setChildIndex(order[i], i);
 		}
 
-		if (fish && state.localPlayActive) {
+		if (sim && state.localPlayActive) {
 			network.sendFish(socket);
 		}
 
-		if (fish && !fish.alive) {
+		if (sim && !sim.alive) {
 			handleFishDeath(socket);
 		}
 
@@ -409,16 +360,19 @@
 
 	function handleFishDeath(socket) {
 		var fish = state.myFish;
-		fish.ctp = [];
+		var sim = fish.sim;
+		sim.ctp = [];
+		sim.nRPart = 0;
 		network.sendFish(socket);
-		var maxWeight = fish.max_weight || 0;
+		var maxWeight = sim.max_weight || 0;
 		fish.die();
 		state.lastLeaderboardName = state.playerName;
 		ui.showLeaderboardLoading();
 		network.emitFishDeath(socket, maxWeight);
 		state.playerName = null;
-		state.savedLakeScale = fish.lakeScale;
+		state.savedLakeScale = sim.lakeScale;
 		state.myFish = null;
+		state.mySim = null;
 		state.lake.vx = 0;
 		state.lake.vy = 0;
 		setTimeout(function() {
@@ -433,35 +387,26 @@
 				state.localPlayActive = true;
 			}
 		}
-		key.down("up", function() { onMoveKey(); if (state.myFish) state.myFish.up = true; return false; });
-		key.up("up", function() { if (state.myFish) state.myFish.up = false; return false; });
-		key.down("down", function() { onMoveKey(); if (state.myFish) state.myFish.down = true; return false; });
-		key.up("down", function() { if (state.myFish) state.myFish.down = false; return false; });
-		key.down("left", function() { onMoveKey(); if (state.myFish) state.myFish.left = true; return false; });
-		key.up("left", function() { if (state.myFish) state.myFish.left = false; return false; });
-		key.down("right", function() { onMoveKey(); if (state.myFish) state.myFish.right = true; return false; });
-		key.up("right", function() { if (state.myFish) state.myFish.right = false; return false; });
+		["up", "down", "left", "right"].forEach(function(d) {
+			key.down(d, function() { onMoveKey(); if (state.mySim) state.mySim[d] = true; return false; });
+			key.up(d, function() { if (state.mySim) state.mySim[d] = false; return false; });
+		});
 		key.down("q", function() {
-			if (state.debugEnabled && state.myFish) {
-				state.myFish.addLifeGain(0.02, "fish")
+			if (state.debugEnabled && state.mySim) {
+				state.mySim.addLifeGain(0.02, "fish");
+				console.log("Growing up to life " + state.mySim.life + " lifeGain " + state.mySim.lifeGain + " gainWeight x" + state.mySim.gainWeight + " Growing up to size " + state.mySim.size);
 			}
-			console.log("Growing up to life " + state.myFish.life + " lifeGain " + state.myFish.lifeGain + " gainWeight x" + state.myFish.gainWeight + " Growing up to size " + state.myFish.size);
 			return false;
 		});
 		key.down("w", function() {
-			if (state.debugEnabled && state.myFish) {
-				state.myFish.size = Math.max(state.myFish.size / 1.1, cfg.fishSizeStart);			
-			}
+			if (state.debugEnabled && state.mySim) state.mySim.size = Math.max(state.mySim.size / 1.1, cfg.fishSizeStart);
 			return false;
 		});
 	}
 
 	function resetKeys() {
-		if (state.myFish) {
-			state.myFish.left = false;
-			state.myFish.right = false;
-			state.myFish.up = false;
-			state.myFish.down = false;
+		if (state.mySim) {
+			["left", "right", "up", "down"].forEach(function(d) { state.mySim[d] = false; });
 		}
 	}
 

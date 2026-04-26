@@ -6,12 +6,12 @@
 
 	function removeOtherFishById(fishId) {
 		if (fishId === undefined || fishId === null || !state.lake) return;
-		if (state.myFish && state.myFish.id === fishId) return;
+		if (state.myFish && state.myFish.sim.id === fishId) return;
 		var lake = state.lake;
-		var o = lake.otherFish[fishId];
-		if (o) {
+		var v = lake.otherFish[fishId];
+		if (v) {
 			try {
-				o.die();
+				v.die();
 			} catch (e) { /* ignore */ }
 			delete lake.otherFish[fishId];
 		}
@@ -24,7 +24,7 @@
 			if (gen !== undefined && gen !== state.gameGeneration) return;
 			if (!state.lake) return;
 			var lake = state.lake;
-			var myId = state.myFish ? state.myFish.id : null;
+			var myId = state.myFish ? state.myFish.sim.id : null;
 			var inBatch = {};
 			for (var i = 0; i < msg.length; i++) {
 				var e = msg[i];
@@ -48,47 +48,35 @@
 		if (gen !== undefined && gen !== state.gameGeneration) return;
 		if (!msg || msg.id === undefined || !msg.pos) return;
 		if (!state.lake) return;
-		if (state.myFish && state.myFish.id === msg.id) return;
+		if (state.myFish && state.myFish.sim.id === msg.id) return;
 
 		var ctp = msg.ctp ? msg.ctp.slice() : [];
 		var colorHue = (typeof msg.colorHue === "number" && msg.colorHue >= 0 && msg.colorHue <= 360) ? msg.colorHue : null;
 		var lake = state.lake;
 		var now = (typeof performance !== "undefined" && performance.now) ? performance.now() / 1000 : Date.now() / 1000;
 		var pos = { x: msg.pos.x, y: msg.pos.y };
-		var o = lake.otherFish[msg.id];
-		if (o) {
-			if (o._lastUpdateTime !== undefined) {
-				var dt = now - o._lastUpdateTime;
-				if (dt > 0.001) {
-					var rawV = {
-						x: (pos.x - o._lastPos.x) / dt,
-						y: (pos.y - o._lastPos.y) / dt
-					};
-					var blend = 0.5;
-					o._lastVelocity = {
-						x: (o._lastVelocity.x || 0) * (1 - blend) + rawV.x * blend,
-						y: (o._lastVelocity.y || 0) * (1 - blend) + rawV.y * blend
-					};
-				}
-			} else {
-				o._lastVelocity = { x: 0, y: 0 };
+		var view = lake.otherFish[msg.id];
+		if (view) {
+			var dt = now - view._lastUpdateTime;
+			if (dt > 0.001) {
+				var rawVx = (pos.x - view._lastPos.x) / dt;
+				var rawVy = (pos.y - view._lastPos.y) / dt;
+				view._lastVelocity.x = view._lastVelocity.x * 0.5 + rawVx * 0.5;
+				view._lastVelocity.y = view._lastVelocity.y * 0.5 + rawVy * 0.5;
 			}
 		} else {
 			lake.otherFishId.push(msg.id);
-			o = new Fish(msg.id, msg.pos, ctp, msg.color, msg.name || "Fish", colorHue);
-			o._lastVelocity = { x: 0, y: 0 };
-			lake.otherFish[msg.id] = o;
+			var sim = new FishSim(msg.id, msg.pos, ctp, msg.name || "Fish", colorHue);
+			view = new FishView(sim, false);
+			view._lastVelocity = { x: 0, y: 0 };
+			lake.otherFish[msg.id] = view;
 		}
-		o._lastPos = { x: pos.x, y: pos.y };
-		o._lastUpdateTime = now;
-		o.set(ctp, msg.pos, msg.size, msg.color, lake, msg.name, colorHue);
-		if (o.fishParts && o.fishParts.mounth) {
-			if (msg.mouthOpen) { o.fishParts.mounth.scaleX = 2.2; o.fishParts.mounth.scaleY = 1.5; }
-			else { o.fishParts.mounth.scaleX = 1; o.fishParts.mounth.scaleY = 1; }
-		}
-		o.look_target = (msg.lookTarget && typeof msg.lookTarget.x === "number") ? { x: msg.lookTarget.x, y: msg.lookTarget.y } : null;
-		o.updatePupils();
-		o.setAlive(1);
+		view._lastPos = { x: pos.x, y: pos.y };
+		view._lastUpdateTime = now;
+		view.setRemoteSnapshot(ctp, msg.pos, msg.size, msg.color, msg.name, colorHue);
+		view.sim._mouthOpen = !!msg.mouthOpen;
+		view.sim.look_target = (msg.lookTarget && typeof msg.lookTarget.x === "number") ? { x: msg.lookTarget.x, y: msg.lookTarget.y } : null;
+		view.sim.setAlive(1);
 	}
 
 	function setup(socket) {
@@ -143,34 +131,14 @@
 			}
 		};
 
-		socket.on("fish_to_client", function(data) {
-			state.networkMode = "emit";
-			var delay = cfg.virtualDelay;
+		function scheduleFish(payload, mode) {
+			state.networkMode = mode;
 			var gen = state.gameGeneration;
-			function process() {
-				processFishToClient(data, gen);
-			}
-			if (delay > 0) {
-				setTimeout(process, delay);
-			} else {
-				process();
-			}
-		});
-
-		socket.on("fish_batch", function(data) {
-			state.networkMode = "batch";
-			var delay = cfg.virtualDelay;
-			var gen = state.gameGeneration;
-			var fishList = (data && data.fish) ? data.fish : [];
-			function run() {
-				processFishToClient(fishList, gen);
-			}
-			if (delay > 0) {
-				setTimeout(run, delay);
-			} else {
-				run();
-			}
-		});
+			var run = function() { processFishToClient(payload, gen); };
+			if (cfg.virtualDelay > 0) setTimeout(run, cfg.virtualDelay); else run();
+		}
+		socket.on("fish_to_client", function(data) { scheduleFish(data, "emit"); });
+		socket.on("fish_batch", function(data) { scheduleFish((data && data.fish) ? data.fish : [], "batch"); });
 
 		socket.on("new_fish_id", function(data) {
 			window.FishbowlGame.onNewFish(data);
@@ -180,19 +148,20 @@
 	function sendFish(socket) {
 		var fish = state.myFish;
 		if (!fish) return;
-		var color = createjs.Graphics.getHSL(fish.color, fish.life / fish.maxLife * 200 - 100, 50);
+		var sim = fish.sim;
+		var color = createjs.Graphics.getHSL(sim.color, sim.life / sim.maxLife * 200 - 100, 50);
 		var payload = {
-			id: fish.id,
-			pos: fish.pos,
-			ctp: fish.ctp,
-			size: fish.size,
+			id: sim.id,
+			pos: sim.pos,
+			ctp: sim.ctp,
+			size: sim.size,
 			color: color,
-			colorHue: fish.color,
+			colorHue: sim.color,
 			name: state.playerName,
-			mouthOpen: fish._mouthOpen === true
+			mouthOpen: sim._mouthOpen === true
 		};
-		if (fish.look_target && typeof fish.look_target.x === "number" && typeof fish.look_target.y === "number") {
-			payload.lookTarget = { x: fish.look_target.x, y: fish.look_target.y };
+		if (sim.look_target && typeof sim.look_target.x === "number" && typeof sim.look_target.y === "number") {
+			payload.lookTarget = { x: sim.look_target.x, y: sim.look_target.y };
 		}
 		socket.emit("fish_to_server", payload);
 	}
