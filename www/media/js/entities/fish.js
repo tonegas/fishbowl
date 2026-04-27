@@ -307,8 +307,9 @@
 		var p = { x: (root.x - lake.x) * ls, y: (root.y - lake.y) * ls };
 		var ang = Math.atan2(p.x, -p.y);
 		var colorStr = this._colorStr || "#ffffff";
-		var sm = cfg.otherFishSmooth;
-		var useLerp = sm > 0 && sm < 1;
+		/* otherFishSmooth: 0 = snap (off), 1 = smoothing massimo. Fattore di lerp = (1 - smooth). */
+		var lerp = 1 - cfg.otherFishSmooth;
+		var useLerp = lerp > 0 && lerp < 1;
 		this.arrow.x = Math.max(-bordo.x, Math.min(bordo.x, p.x));
 		this.arrow.y = Math.max(-bordo.y, Math.min(bordo.y, p.y));
 		if (Math.abs(p.x) < bordo.x && Math.abs(p.y) < bordo.y) {
@@ -319,8 +320,8 @@
 			this.nameLabel.color = colorStr;
 			var headPt = root.localToLocal(50, 50, stage);
 			if (useLerp && this._uiNameNear) {
-				this.nameLabel.x += (headPt.x - this.nameLabel.x) * sm;
-				this.nameLabel.y += (headPt.y - this.nameLabel.y) * sm;
+				this.nameLabel.x += (headPt.x - this.nameLabel.x) * lerp;
+				this.nameLabel.y += (headPt.y - this.nameLabel.y) * lerp;
 			} else {
 				this.nameLabel.x = headPt.x;
 				this.nameLabel.y = headPt.y;
@@ -338,8 +339,8 @@
 			var tAx = this.arrow.x + offset * Math.sin(ang);
 			var tAy = this.arrow.y - offset * Math.cos(ang);
 			if (useLerp && this._uiArrowNear) {
-				this.arrowLabel.x += (tAx - this.arrowLabel.x) * sm;
-				this.arrowLabel.y += (tAy - this.arrowLabel.y) * sm;
+				this.arrowLabel.x += (tAx - this.arrowLabel.x) * lerp;
+				this.arrowLabel.y += (tAy - this.arrowLabel.y) * lerp;
 			} else {
 				this.arrowLabel.x = tAx;
 				this.arrowLabel.y = tAy;

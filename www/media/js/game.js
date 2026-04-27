@@ -26,23 +26,23 @@
 			if (!other) continue;
 			var oSim = other.sim;
 			var root = other.fishParts && other.fishParts.cont && other.fishParts.cont[0];
+			/* otherFishSmooth: 0 = snap (off), 1 = smoothing massimo (frozen). Il fattore di lerp è (1 - smooth). */
+			var lerp = 1 - cfg.otherFishSmooth;
 			if (root && other._lastPos && other._lastVelocity && other._lastUpdateTime !== undefined) {
 				var ext = Math.min(now - other._lastUpdateTime, 0.15);
 				var targetX = other._lastPos.x + other._lastVelocity.x * ext;
 				var targetY = other._lastPos.y + other._lastVelocity.y * ext;
-				var smooth = cfg.otherFishSmooth;
-				if (smooth > 0 && smooth < 1) {
-					root.x = root.x + (targetX - root.x) * smooth;
-					root.y = root.y + (targetY - root.y) * smooth;
-				} else {
+				if (lerp >= 1) {
 					root.x = targetX;
 					root.y = targetY;
+				} else if (lerp > 0) {
+					root.x = root.x + (targetX - root.x) * lerp;
+					root.y = root.y + (targetY - root.y) * lerp;
 				}
 				oSim.pos.x = root.x;
 				oSim.pos.y = root.y;
 			}
 			if (other._displayCtp && other._targetCtp) {
-				var ctpSmooth = cfg.otherFishSmooth;
 				var tc = other._targetCtp;
 				var dc = other._displayCtp;
 				if (tc.length !== dc.length) {
@@ -52,10 +52,10 @@
 						var diff = tc[ci] - dc[ci];
 						while (diff > Math.PI) diff -= 2 * Math.PI;
 						while (diff < -Math.PI) diff += 2 * Math.PI;
-						if (ctpSmooth > 0 && ctpSmooth < 1) {
-							dc[ci] = dc[ci] + diff * ctpSmooth;
-						} else {
+						if (lerp >= 1) {
 							dc[ci] = tc[ci];
+						} else if (lerp > 0) {
+							dc[ci] = dc[ci] + diff * lerp;
 						}
 					}
 				}

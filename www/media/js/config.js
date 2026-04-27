@@ -21,7 +21,7 @@
 
 		// Lato del quadrato in cui il server sorteggia la posizione iniziale (e preview spettatore).
 		// Coordinate in [-range/2, +range/2] per x e y rispetto al centro mondo.
-		playerSpawnRange: 1000,
+		playerSpawnRange: 5000,
 
 		/* ---------- Cibo ---------- */
 		// Quanti frammenti di cibo generare all’avvio del lago sul client.
@@ -107,8 +107,9 @@
 		fishOtherLife: 10,
 
 		// Fattore 0–1 per smussare posizione e angoli degli altri pesci sul client (interpolazione).
-		// 1 = nessuno smoothing; valori bassi = movimento più morbido ma più “in ritardo” visivo.
-		otherFishSmooth: 0.1,
+		// 0 = nessuno smoothing (snap immediato); 1 = smoothing massimo (il remoto resta fermo, non converge);
+		// valori intermedi (es. 0.9) = movimento morbido ma più "in ritardo" visivo.
+		otherFishSmooth: 0.05,
 
 		/* ---------- Rete (server + client) ---------- */
 		// Path URL di Socket.IO lato client (deve combaciare con come monti il server).

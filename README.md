@@ -28,9 +28,12 @@ The server listens on port **9999** (or the port passed as argument). Configurat
 
 With `--debug` you enable debug mode:
 
-- **Q** — life +30, size +10
-- **W** — size −10
-- **Debug panel** (top-left) — average reception delay of other fish (ms, 1-second rolling average), fish count, network mode (emit/batch)
+- **Q** — simulate eating a fish: gains life and bumps the growth multiplier (`addLifeGain(0.02, "fish")`)
+- **W** — shrink: divides current size by 1.1, floored at `fishSizeStart`
+- **Debug panels** (top-left, stacked):
+  - **Local** — your fish stats: life, lifeGain, gainWeight (xN), time, size, scale, lakeScale
+  - **Remote** — socket connection state, transport, network mode (emit/batch), avgDelay (ms, 1-second rolling average), peer count, virtualDelay, gameGeneration
+  - **Bite** — only when exactly 2 fish are present: mouthRadius, tailSegmentRadius, headDSegmentRadius, eatWhole, dis, eatFishDistanceFactor, intersect
 
 ```bash
 node fish_server.js 9999 --debug
@@ -61,17 +64,18 @@ Main parameters in `www/media/js/config.js`:
 
 | Parameter | Description | Default |
 |-----------|-------------|---------|
-| `lakeSize` | Lake dimensions (world units) | 10000 |
+| `lakeSize` | Lake dimensions (world units, square side) | 10000 |
 | `foodCount` | Number of food items | 1000 |
-| `foodSpawnRadius` | Spawn radius around player | 500 |
-| `algaeCount` | Number of algae | 150 |
-| `playerSpawnRange` | Initial spawn area (centered) | 100 |
-| `fishLifeStart` | Starting life (seconds) | 180 |
-| `fishLifeEnd` | Time to reach max size (seconds) | 1200 |
+| `foodSpawnRadius` | Radius around lake center for food (food beyond it is repositioned) | 500 |
+| `algaeCount` | Number of decorative algae | 150 |
+| `playerSpawnRange` | Initial spawn area side (centered, in world units) | 5000 |
+| `fishLifeStart` | Starting life (seconds of simulation) | 120 |
+| `fishLifeEnd` | Maximum life cap (seconds of simulation) | 60 |
+| `timeToDouble` | Time (seconds) for the fish mass to double when growing | 400 |
 | `batchIntervalMs` | Batch broadcast interval (ms), when in batch mode | 20 |
-| `batchFishThreshold` | Fish count above which batch mode is used (< N = emit, ≥ N = batch) | 10 |
-| `otherFishSmooth` | Smoothing factor for other fish position and orientation (0 = no smooth, 0.3 = moderate) | 0.25 |
-| `virtualDelay` | Artificial delay (ms) for received updates (for testing) | 0 |
+| `batchFishThreshold` | Fish count at which the server switches to batch mode (< N = emit, ≥ N = batch) | 5 |
+| `otherFishSmooth` | Smoothing factor for other fish position and orientation (0 = snap/no smoothing, 1 = max smoothing/frozen, intermediate values = smoother but more visually delayed). Internally `lerp = 1 - otherFishSmooth`. | 0.1 |
+| `virtualDelay` | Artificial delay (ms) applied to received updates (for testing) | 0 |
 
 ## Network modes
 
@@ -133,22 +137,27 @@ fishbowl/
     ├── fish.html            # Main game page
     └── media/
         ├── js/
-        │   ├── config.js    # Shared config (client + server)
-        │   ├── main.js      # Entry point
-        │   ├── game.js      # Game loop, keyboard, other fish extrapolation
-        │   ├── network.js   # Socket.IO client (fish_to_server, fish_to_client, fish_batch)
-        │   ├── ui.js        # Overlays (name, tutorial, leaderboard, debug)
-        │   ├── socket.js    # Socket setup
-        │   └── entities/
-        │       ├── fish.js  # Player and other fish
-        │       ├── food.js  # Floating food
-        │       ├── algae.js # Lake decoration
-        │       ├── lake.js  # Lake container
-        │       ├── lakeBorder.js    # Lake glass border
-        │       └── waterSurface.js  # Animated waves
+        │   ├── config.js          # Shared config (client + server)
+        │   ├── main.js            # Entry point
+        │   ├── game.js            # Game loop, keyboard, other fish extrapolation
+        │   ├── network.js         # Socket.IO client (fish_to_server, fish_to_client, fish_batch)
+        │   ├── ui.js              # Overlays (name, tutorial, leaderboard, debug panels)
+        │   ├── socket.js          # Socket setup
+        │   ├── shared/            # Pure simulation logic (no rendering, reusable client/server)
+        │   │   ├── fishSim.js     # FishSim: state, update, eat, bite, life/growth
+        │   │   └── foodSim.js     # FoodSim: state, activate, resizeTo, update
+        │   └── entities/          # Rendering layer (CreateJS Views)
+        │       ├── fish.js        # FishView: shape, HUD, labels, sync from FishSim
+        │       ├── food.js        # FoodView: shape, sync from FoodSim
+        │       ├── algae.js       # Lake decoration
+        │       ├── lake.js        # Lake container
+        │       ├── lakeBorder.js  # Lake glass border
+        │       └── waterSurface.js # Animated waves
         ├── lib/             # jQuery, CreateJS, Lodash, Kibo
         └── image/           # Sprites (algae SVGs)
 ```
+
+The `shared/*Sim.js` modules contain the entity state and simulation rules with no CreateJS dependencies; the `entities/*.js` modules wrap a `*Sim` instance and handle drawing only. This separation prepares the code for a future server-authoritative model.
 
 ## Socket.IO events
 
@@ -156,6 +165,8 @@ fishbowl/
 |-------|-----------|-------------|
 | `register_name` | Client → Server | Register player name |
 | `name_accepted` / `name_rejected` | Server → Client | Name validation |
+| `request_spectator_lake` | Client → Server | Request lake layout while still in name overlay (preview) |
+| `spectator_lake` | Server → Client | Lake data (algae, preview position) for spectators |
 | `new_fish` | Client → Server | Request to join the game |
 | `new_fish_id` | Server → Client | Spawn data (position, lake with algae) |
 | `fish_to_server` | Client → Server | Player fish state (pos, ctp, size, etc.) |
