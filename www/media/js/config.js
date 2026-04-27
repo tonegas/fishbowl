@@ -109,7 +109,7 @@
 		// Fattore 0–1 per smussare posizione e angoli degli altri pesci sul client (interpolazione).
 		// 0 = nessuno smoothing (snap immediato); 1 = smoothing massimo (il remoto resta fermo, non converge);
 		// valori intermedi (es. 0.9) = movimento morbido ma più "in ritardo" visivo.
-		otherFishSmooth: 0.05,
+		otherFishSmooth: 0.025,
 
 		/* ---------- Rete (server + client) ---------- */
 		// Path URL di Socket.IO lato client (deve combaciare con come monti il server).
